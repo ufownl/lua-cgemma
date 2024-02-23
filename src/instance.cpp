@@ -54,14 +54,16 @@ instance* instance::check(lua_State* L, int index) {
 }
 
 int instance::create(lua_State* L) {
-  auto num_threads = lua_tointeger(L, 1);
-  luaL_checktype(L, 2, LUA_TTABLE);
+  luaL_checktype(L, 1, LUA_TTABLE);
+  lua_getfield(L, 1, "num_threads");
+  auto num_threads = lua_tointeger(L, -1);
+  lua_pop(L, 1);
   constexpr const char* required_options[] = {"--tokenizer", "--model", "--compressed_weights"};
   constexpr const int n = sizeof(required_options) / sizeof(required_options[0]);
   char* argv[n * 2 + 1] = {const_cast<char*>("lua-cgemma")};
   for (int i = 0; i < n; ++i) {
     auto k = required_options[i] + 2;
-    lua_getfield(L, 2, k);
+    lua_getfield(L, 1, k);
     auto v = lua_tostring(L, -1);
     if (!v) {
       luaL_error(L, "Option %s is required", k);
