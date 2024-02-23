@@ -18,15 +18,15 @@ namespace cgemma {
 instance::instance(size_t num_threads, int argc, char* argv[])
   : inner_pool_(0)
   , pool_(num_threads)
-  , loader_(argc, argv) {
-  if (auto err = loader_.Validate()) {
+  , args_(argc, argv) {
+  if (auto err = args_.Validate()) {
     throw std::invalid_argument(err);
   }
   if (num_threads > 10) {
     gcpp::PinThreadToCore(num_threads - 1);
     pool_.Run(0, pool_.NumThreads(), [](uint64_t, size_t thread) { gcpp::PinThreadToCore(thread); });
   }
-  model_ = std::make_unique<gcpp::Gemma>(loader_, pool_);
+  model_ = std::make_unique<gcpp::Gemma>(args_, pool_);
 }
 
 void instance::declare(lua_State* L) {

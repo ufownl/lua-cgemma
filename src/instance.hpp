@@ -21,7 +21,7 @@ public:
 private:
   hwy::ThreadPool inner_pool_;
   hwy::ThreadPool pool_;
-  gcpp::LoaderArgs loader_;
+  gcpp::LoaderArgs args_;
   std::unique_ptr<gcpp::Gemma> model_;
 };
 
