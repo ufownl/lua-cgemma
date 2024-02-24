@@ -1,0 +1,70 @@
+local function implement(declaration, description)
+  local name = string.match(declaration, "^def%s+([a-zA-Z0-9_]+)")
+  if not name then
+    return nil, "Bad function declaration."
+  end
+  local gemma, err = require("cgemma").new({
+    tokenizer = "tokenizer.spm",
+    model = "2b-it",
+    compressed_weights = "2b-it-sfp.sbs"
+  })
+  if not gemma then
+    return nil, err
+  end
+  local ok, err = gemma:start_session()
+  if not ok then
+    return nil, err
+  end
+  local ok, err = gemma(string.format("You are now the following python function: ```# %s\n%s```\n\nOnly respond with your `return` value. Do not include any other explanatory text in your response.", description, declaration))
+  if not ok then
+    return nil, err
+  end
+  return function(...)
+    local args = {...}
+    local text = ""
+    for i, v in ipairs(args) do
+      text = text..", "..(type(v) ~= nil and v or "None")
+    end
+    return gemma(string.format("%s(%s)", name, string.sub(text, 3)))
+  end
+end
+
+print("Implementing `fake_people` ...")
+local fake_people, err = implement(
+  "def fake_people(n: int) -> list[dict]:",
+  "Generates n different examples of fake data representing people, each with a name, a gender, and an age."
+)
+if not fake_people then
+  print("Opoos! ", err)
+  return
+end
+print("Implementing `multiply` ...")
+local multiply, err = implement(
+  "def multiply(a: int, b: int) -> int:",
+  "Multiply the given two integers."
+)
+if not multiply then
+  print("Opoos! ", err)
+  return
+end
+print("Calling `fake_people(4)` ...")
+local resp, err = fake_people(4)
+if not resp then
+  print("Opoos! ", err)
+  return
+end
+print(resp)
+print("Calling `multiply(7, 6)` ...")
+local resp, err = multiply(7, 6)
+if not resp then
+  print("Opoos! ", err)
+  return
+end
+print(resp)
+print("Calling `fake_people(8)` ...")
+local resp, err = fake_people(8)
+if not resp then
+  print("Opoos! ", err)
+  return
+end
+print(resp)
