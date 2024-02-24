@@ -99,7 +99,7 @@ int start_session(lua_State* L) {
       }
     }
     inst->current_session = std::make_unique<cgemma::session>(seed, argc, argv);
-    lua_pushboolean(L, 1);
+    lua_pushinteger(L, seed);
     return 1;
   } catch (const std::exception& e) {
     lua_pushnil(L);
