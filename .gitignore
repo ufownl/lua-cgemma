@@ -38,3 +38,7 @@
 
 # Build
 build/
+
+# Model files
+*.spm
+*.sbs
