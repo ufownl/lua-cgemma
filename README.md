@@ -82,7 +82,8 @@ Available options:
                     -- instruction-tuned), or 7b-pt (7B parameters, pretrained).
                     -- (required)
   compressed_weights = "/path/to/2b-it-sfp.sbs",  -- Path of compressed weights file. (required)
-  num_threads = 1,  -- Number of threads in the internal thread pool.
+  num_threads = 1,  -- Number of threads in the internal thread pool. (default is number
+                    -- of concurrent threads supported by the implementation)
 }
 ```
 

@@ -3,6 +3,7 @@
 #include <util/app.h>
 #include <stdexcept>
 #include <string>
+#include <thread>
 
 namespace {
 
@@ -163,6 +164,9 @@ int instance::create(lua_State* L) {
   luaL_checktype(L, 1, LUA_TTABLE);
   lua_getfield(L, 1, "num_threads");
   auto num_threads = lua_tointeger(L, -1);
+  if (num_threads == 0) {
+    num_threads = std::thread::hardware_concurrency();
+  }
   lua_pop(L, 1);
   constexpr const char* required_options[] = {"--tokenizer", "--model", "--compressed_weights"};
   constexpr const int n = sizeof(required_options) / sizeof(required_options[0]);
