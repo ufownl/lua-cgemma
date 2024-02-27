@@ -114,8 +114,31 @@ Check if the Gemma instance is ready to chat.
 
 #### metatable(cgemma.instance).__call
 
-**syntax:** `<string>reply, <string>err = inst(<string>text)`
+**syntax:** `<string or boolean>reply, <string>err = inst(<string>text[, <function>stream])`
 
 Generate reply.
 
-A successful call returns the content of the reply. Otherwise, it returns `nil` and a string describing the error.
+A successful call returns the content of the reply (without a stream function) or `true` (with a stream function). Otherwise, it returns `nil` and a string describing the error.
+
+The stream function is defined as follows:
+
+```lua
+function stream(token, pos, prompt_size)
+  if pos < prompt_size then
+    -- Gemma is processing the prompt
+    io.write(pos == 0 and "reading and thinking ." or ".")
+  elseif token then
+    -- Stream the token text output by Gemma here
+    if pos == prompt_size then
+      io.write("\nreply: ")
+    end
+    io.write(token)
+  else
+    -- Gemma's output reaches the end
+    print()
+  end
+  io.flush()
+  -- return `true` indicates success; return `false` indicates failure and terminates the generation
+  return true
+end
+```
