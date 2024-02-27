@@ -9,15 +9,33 @@ namespace {
 
 constexpr const char* name = "cgemma.instance";
 
-int call(lua_State* L) {
-  auto inst = cgemma::instance::check(L, 1);
-  if (!inst->current_session) {
-    lua_pushnil(L);
-    lua_pushliteral(L, "Session has ended.");
-    return 2;
+std::vector<int> text2prompt(cgemma::instance* inst, std::string text) {
+  if (inst->model().model_training == gcpp::ModelTraining::GEMMA_IT) {
+    text = "<start_of_turn>user\n" + text + "<end_of_turn>\n<start_of_turn>model\n";
+    if (inst->current_session->pos() > 0) {
+      text = "<end_of_turn>\n" + text;
+    }
   }
+  std::vector<int> prompt;
+  if (inst->current_session->pos() == 0) {
+    prompt.push_back(2);
+  }
+  if (auto status = inst->model().Tokenizer().Encode(text, &prompt); !status.ok()) {
+    throw status;
+  }
+  return prompt;
+}
+
+void generate(cgemma::instance* inst, std::vector<int>& prompt, const gcpp::StreamFunc& stream_token) {
+  gcpp::GenerateGemma(inst->model(), inst->current_session->args(), prompt, inst->current_session->pos(), inst->pool(), inst->inner_pool(), stream_token, [](int) { return true; }, inst->current_session->rnd(), 0);
+  if (inst->current_session->pos() >= inst->current_session->args().max_tokens) {
+    inst->current_session = nullptr;
+  }
+}
+
+int normal_mode(lua_State* L, cgemma::instance* inst, const char* text) {
   try {
-    std::vector<int> prompt;
+    auto prompt = text2prompt(inst, text);
     std::vector<int> output;
     size_t pos = 0;
     auto stream_token = [&](int token, float) {
@@ -28,30 +46,10 @@ int call(lua_State* L) {
       }
       return true;
     };
-    std::string text(luaL_checkstring(L, 2));
-    if (inst->model().model_training == gcpp::ModelTraining::GEMMA_IT) {
-      text = "<start_of_turn>user\n" + text + "<end_of_turn>\n<start_of_turn>model\n";
-      if (inst->current_session->pos() > 0) {
-        text = "<end_of_turn>\n" + text;
-      }
-    }
-    if (inst->current_session->pos() == 0) {
-      prompt.push_back(2);
-    }
-    if (auto status = inst->model().Tokenizer().Encode(text, &prompt); !status.ok()) {
-      lua_pushnil(L);
-      lua_pushstring(L, status.ToString().c_str());
-      return 2;
-    }
-    gcpp::GenerateGemma(inst->model(), inst->current_session->args(), prompt, inst->current_session->pos(), inst->pool(), inst->inner_pool(), stream_token, [](int) { return true; }, inst->current_session->rnd(), 0);
-    if (inst->current_session->pos() >= inst->current_session->args().max_tokens) {
-      inst->current_session = nullptr;
-    }
+    generate(inst, prompt, stream_token);
     std::string resp;
     if (auto status = inst->model().Tokenizer().Decode(output, &resp); !status.ok()) {
-      lua_pushnil(L);
-      lua_pushstring(L, status.ToString().c_str());
-      return 2;
+      throw status;
     }
     if (auto i = resp.find_first_not_of(" \t\n"); i != std::string::npos) {
       lua_pushlstring(L, resp.data() + i, resp.size() - i);
@@ -59,6 +57,22 @@ int call(lua_State* L) {
       lua_pushliteral(L, "");
     }
     return 1;
+  } catch (const sentencepiece::util::Status& status) {
+    lua_pushnil(L);
+    lua_pushstring(L, status.ToString().c_str());
+    return 2;
+  }
+}
+
+int call(lua_State* L) {
+  auto inst = cgemma::instance::check(L, 1);
+  if (!inst->current_session) {
+    lua_pushnil(L);
+    lua_pushliteral(L, "Session has ended.");
+    return 2;
+  }
+  try {
+    return normal_mode(L, inst, luaL_checkstring(L, 2));
   } catch (const std::exception& e) {
     lua_pushnil(L);
     lua_pushstring(L, e.what());
