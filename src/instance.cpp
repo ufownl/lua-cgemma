@@ -33,29 +33,57 @@ void generate(cgemma::instance* inst, std::vector<int>& prompt, const gcpp::Stre
   }
 }
 
+int stream_mode(lua_State* L, cgemma::instance* inst, const char* text) {
+  try {
+    auto prompt = text2prompt(inst, text);
+    size_t pos = 0;
+    generate(inst, prompt, [&](int token, float) {
+      lua_pushvalue(L, 3);
+      if (pos >= prompt.size() && token != gcpp::EOS_ID) {
+        std::string token_text;
+        if (auto status = inst->model().Tokenizer().Decode(std::vector<int>{token}, &token_text); !status.ok()) {
+          throw status;
+        }
+        lua_pushlstring(L, token_text.data(), token_text.size());
+      } else {
+        lua_pushnil(L);
+      }
+      lua_pushinteger(L, pos);
+      lua_pushinteger(L, prompt.size());
+      lua_call(L, 3, 1);
+      auto res = lua_toboolean(L, -1);
+      lua_pop(L, 1);
+      inst->current_session->incr_pos(1);
+      ++pos;
+      return res ? true : false;
+    });
+    lua_pushboolean(L, 1);
+    return 1;
+  } catch (const sentencepiece::util::Status& status) {
+    lua_pushnil(L);
+    lua_pushstring(L, status.ToString().c_str());
+    return 2;
+  }
+}
+
 int normal_mode(lua_State* L, cgemma::instance* inst, const char* text) {
   try {
     auto prompt = text2prompt(inst, text);
     std::vector<int> output;
     size_t pos = 0;
-    auto stream_token = [&](int token, float) {
-      inst->current_session->incr_pos(1);
-      ++pos;
+    generate(inst, prompt, [&](int token, float) {
       if (pos >= prompt.size() && token != gcpp::EOS_ID) {
         output.push_back(token);
       }
+      inst->current_session->incr_pos(1);
+      ++pos;
       return true;
-    };
-    generate(inst, prompt, stream_token);
+    });
     std::string resp;
     if (auto status = inst->model().Tokenizer().Decode(output, &resp); !status.ok()) {
       throw status;
     }
-    if (auto i = resp.find_first_not_of(" \t\n"); i != std::string::npos) {
-      lua_pushlstring(L, resp.data() + i, resp.size() - i);
-    } else {
-      lua_pushliteral(L, "");
-    }
+    lua_pushlstring(L, resp.data(), resp.size());
     return 1;
   } catch (const sentencepiece::util::Status& status) {
     lua_pushnil(L);
@@ -72,7 +100,8 @@ int call(lua_State* L) {
     return 2;
   }
   try {
-    return normal_mode(L, inst, luaL_checkstring(L, 2));
+    auto text = luaL_checkstring(L, 2);
+    return lua_isfunction(L, 3) ? stream_mode(L, inst, text) : normal_mode(L, inst, text);
   } catch (const std::exception& e) {
     lua_pushnil(L);
     lua_pushstring(L, e.what());
