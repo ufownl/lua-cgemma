@@ -169,9 +169,8 @@ instance::instance(size_t num_threads, int argc, char* argv[])
   if (auto err = args_.Validate()) {
     throw std::invalid_argument(err);
   }
-  if (num_threads > 10) {
-    gcpp::PinThreadToCore(num_threads - 1);
-    pool_.Run(0, pool_.NumThreads(), [](uint64_t, size_t thread) { gcpp::PinThreadToCore(thread); });
+  if (pool_.NumWorkers() > 10) {
+    pool_.Run(0, pool_.NumWorkers(), [](uint64_t, size_t thread) { gcpp::PinThreadToCore(thread); });
   }
   model_ = std::make_unique<gcpp::Gemma>(args_, pool_);
 }
