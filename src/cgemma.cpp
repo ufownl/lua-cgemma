@@ -1,12 +1,15 @@
 #include "cgemma.hpp"
 #include "instance.hpp"
+#include "scheduler.hpp"
 
 int luaopen_cgemma(lua_State* L) {
   constexpr const luaL_Reg entries[] = {
     {"new", cgemma::instance::create},
+    {"scheduler", cgemma::scheduler::create},
     {nullptr, nullptr}
   };
   cgemma::instance::declare(L);
+  cgemma::scheduler::declare(L);
   lua_newtable(L);
   luaL_register(L, nullptr, entries);
   lua_pushliteral(L, "cgemma");

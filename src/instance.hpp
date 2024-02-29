@@ -2,20 +2,19 @@
 #define CGEMMA_INSTANCE_HPP
 
 #include <lua.hpp>
-#include <hwy/contrib/thread_pool/thread_pool.h>
 #include <gemma.h>
 #include <memory>
 
 namespace cgemma {
 
+class scheduler;
 class session;
 
 class instance {
 public:
-  explicit instance(size_t num_threads, int argc, char* argv[]);
+  explicit instance(int argc, char* argv[], scheduler* s);
 
-  hwy::ThreadPool& inner_pool() { return inner_pool_; }
-  hwy::ThreadPool& pool() { return pool_; }
+  scheduler& sched() const { return *sched_; }
   gcpp::Gemma& model() const { return *model_; }
 
   std::unique_ptr<session> current_session;
@@ -25,9 +24,9 @@ public:
   static int create(lua_State* L);
 
 private:
-  hwy::ThreadPool inner_pool_;
-  hwy::ThreadPool pool_;
   gcpp::LoaderArgs args_;
+  scheduler* sched_;
+  std::unique_ptr<scheduler> default_sched_;
   std::unique_ptr<gcpp::Gemma> model_;
 };
 

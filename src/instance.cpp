@@ -1,9 +1,9 @@
 #include "instance.hpp"
+#include "scheduler.hpp"
 #include "session.hpp"
 #include <util/app.h>
 #include <stdexcept>
 #include <string>
-#include <thread>
 
 namespace {
 
@@ -27,7 +27,7 @@ std::vector<int> text2prompt(cgemma::instance* inst, std::string text) {
 }
 
 void generate(cgemma::instance* inst, std::vector<int>& prompt, const gcpp::StreamFunc& stream_token) {
-  gcpp::GenerateGemma(inst->model(), inst->current_session->args(), prompt, inst->current_session->pos(), inst->pool(), inst->inner_pool(), stream_token, [](int) { return true; }, inst->current_session->rnd(), 0);
+  gcpp::GenerateGemma(inst->model(), inst->current_session->args(), prompt, inst->current_session->pos(), inst->sched().pool(), inst->sched().inner_pool(), stream_token, [](int) { return true; }, inst->current_session->rnd(), 0);
   if (inst->current_session->pos() >= inst->current_session->args().max_tokens) {
     inst->current_session = nullptr;
   }
@@ -162,17 +162,17 @@ int ready(lua_State* L) {
 
 namespace cgemma {
 
-instance::instance(size_t num_threads, int argc, char* argv[])
-  : inner_pool_(0)
-  , pool_(num_threads)
-  , args_(argc, argv) {
+instance::instance(int argc, char* argv[], scheduler* s)
+  : args_(argc, argv)
+  , sched_(s) {
   if (auto err = args_.Validate()) {
     throw std::invalid_argument(err);
   }
-  if (pool_.NumWorkers() > 10) {
-    pool_.Run(0, pool_.NumWorkers(), [](uint64_t, size_t thread) { gcpp::PinThreadToCore(thread); });
+  if (!s) {
+    default_sched_ = std::make_unique<scheduler>();
+    sched_ = default_sched_.get();
   }
-  model_ = std::make_unique<gcpp::Gemma>(args_, pool_);
+  model_ = std::make_unique<gcpp::Gemma>(args_, sched_->pool());
 }
 
 void instance::declare(lua_State* L) {
@@ -204,11 +204,8 @@ instance* instance::check(lua_State* L, int index) {
 
 int instance::create(lua_State* L) {
   luaL_checktype(L, 1, LUA_TTABLE);
-  lua_getfield(L, 1, "num_threads");
-  auto num_threads = lua_tointeger(L, -1);
-  if (num_threads == 0) {
-    num_threads = std::thread::hardware_concurrency();
-  }
+  lua_getfield(L, 1, "scheduler");
+  auto s = scheduler::to(L, -1);
   lua_pop(L, 1);
   constexpr const char* required_options[] = {"--tokenizer", "--model", "--compressed_weights"};
   constexpr const int n = sizeof(required_options) / sizeof(required_options[0]);
@@ -226,7 +223,7 @@ int instance::create(lua_State* L) {
   }
   auto ud = lua_newuserdata(L, sizeof(instance));
   try {
-    new(ud) instance(num_threads, n * 2 + 1, argv);
+    new(ud) instance(n * 2 + 1, argv, s);
     luaL_getmetatable(L, name);
     lua_setmetatable(L, -2);
     return 1;
