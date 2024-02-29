@@ -76,16 +76,26 @@ Available options:
 
 ```lua
 {
-  tokenizer = "/path/to/tokenizer.spm"  -- Path of tokenizer model file. (required)
+  tokenizer = "/path/to/tokenizer.spm",  -- Path of tokenizer model file. (required)
   model = "2b-it",  -- Model type - can be 2b-it (2B parameters, instruction-tuned),
                     -- 2b-pt (2B parameters, pretrained), 7b-it (7B parameters,
                     -- instruction-tuned), or 7b-pt (7B parameters, pretrained).
                     -- (required)
   compressed_weights = "/path/to/2b-it-sfp.sbs",  -- Path of compressed weights file. (required)
-  num_threads = 1,  -- Number of threads in the internal thread pool. (default is number
-                    -- of concurrent threads supported by the implementation)
+  scheduler = sched_inst,  -- Instance of scheduler, if not provided a default scheduler
+                           -- will be attached.
 }
 ```
+
+#### cgemma.scheduler
+
+**syntax:** `<cgemma.scheduler>sched, <string>err = cgemma.scheduler([<number>num_threads])`
+
+Create a scheduler instance.
+
+A successful call returns a scheduler instance. Otherwise, it returns `nil` and a string describing the error.
+
+The only parameter `num_threads` indicates the number of threads in the internal thread pool. If not provided or `num_threads <= 0`, it will create a default scheduler with the number of threads depending on the concurrent threads supported by the implementation.
 
 #### cgemma.instance.start_session
 
