@@ -6,6 +6,8 @@
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <link rel="stylesheet" href="https://unpkg.com/element-ui@2.15.14/lib/theme-chalk/index.css">
+  <link rel="stylesheet" href="https://unpkg.com/prismjs@1.29.0/themes/prism.min.css">
+  <link rel="stylesheet" href="https://unpkg.com/katex@0.16.9/dist/katex.min.css">
   <link rel="stylesheet" href="css/index.css">
 </head>
 <body>
@@ -37,7 +39,10 @@
                   <b v-if="msg.role === 'user'" style="color:Chocolate">You</b>
                   <b v-else>Gemma</b>
                 </div>
-                <div class="bubble"><pre>{{ msg.text }}</pre></div>
+                <div :ref="'msg_content_' + idx" class="bubble">
+                  <vue-markdown v-if="msg.markdown">{{ msg.text }}</vue-markdown>
+                  <pre v-else>{{ msg.text }}</pre>
+                </div>
               </div>
             </td>
           </tr>
@@ -54,9 +59,22 @@
 </body>
 <script src="https://unpkg.com/vue@2.7.15/dist/vue.min.js"></script>
 <script src="https://unpkg.com/element-ui@2.15.14/lib/index.js"></script>
+<script src="https://unpkg.com/vue-markdown-v2@0.1.7/dist/vue-markdown.js"></script>
+<script src="https://unpkg.com/prismjs@v1.29.0/components/prism-core.min.js" data-manual></script>
+<script src="https://unpkg.com/prismjs@v1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
 <script async defer src="https://buttons.github.io/buttons.js"></script>
 <script>
   const wsUrl = window.location.origin.replace('http', 'ws') + '/cgemma/session'
+  Vue.use(VueMarkdown);
+  Prism.hooks.add('before-all-elements-highlight', env => {
+    env.elements.forEach(element => {
+      if (element.className.match(/c\+\+/i)) {
+        element.className = 'language-cpp'  // Fix C++ parse issue
+      } else if (element.className.match(/c#/i)) {
+        element.className = 'language-csharp'  // Fix C# parse issue
+      }
+    })
+  })
   new Vue({
     el: '#app',
     data() {
@@ -118,7 +136,8 @@
         if (this.text) {
           const msg = {
             role: 'user',
-            text: this.text
+            text: this.text,
+            markdown: true
           }
           this.ws.send(JSON.stringify(msg))
           this.messages.push(msg)
@@ -135,17 +154,29 @@
               role: msg.role,
               text: ''
             })
-          } else if (msg.token) {
+          } else if (msg.pos >= msg.prompt_size) {
             const popped_messages = []
             let last_msg = this.messages.pop()
             while (last_msg.role !== msg.role) {
               popped_messages.push(last_msg)
               last_msg = this.messages.pop()
             }
-            this.messages.push({
-              role: msg.role,
-              text: last_msg.text + msg.token
-            })
+            if (msg.token) {
+              this.messages.push({
+                role: msg.role,
+                text: last_msg.text + msg.token
+              })
+            } else {
+              this.messages.push({
+                role: msg.role,
+                text: last_msg.text,
+                markdown: true
+              })
+              const content = this.$refs['msg_content_' + (this.messages.length - 1)][0]
+              this.$nextTick(() => {
+                Prism.highlightAllUnder(content)
+              })
+            }
             while (popped_messages.length > 0) {
               this.messages.push(popped_messages.pop())
             }
