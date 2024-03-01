@@ -12,6 +12,13 @@
   <div id="app" class="client-area">
     <div :style="appContainer">
       <el-card ref="messages" header="Chat to Gemma" :style="msgContainer">
+        <div slot="header">
+          <b>Chat to Gemma</b>
+          <div style="float:right;margin-top:-1px;">
+            <a class="github-button" href="https://github.com/ufownl/lua-cgemma" data-icon="octicon-star" aria-label="Star ufownl/lua-cgemma on GitHub">Star</a>
+            <a class="github-button" href="https://github.com/ufownl" aria-label="Follow @ufownl on GitHub">Follow @ufownl</a>
+          </div>
+        </div>
         <table v-if="messages.length > 0">
           <tr v-for="(msg, idx) in messages" :key="'msg_' + idx">
             <td style="vertical-align:top;width:50px;">
@@ -47,6 +54,7 @@
 </body>
 <script src="https://unpkg.com/vue@2.7.15/dist/vue.min.js"></script>
 <script src="https://unpkg.com/element-ui@2.15.14/lib/index.js"></script>
+<script async defer src="https://buttons.github.io/buttons.js"></script>
 <script>
   const wsUrl = window.location.origin.replace('http', 'ws') + '/cgemma/session'
   new Vue({
