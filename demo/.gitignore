@@ -1,0 +1,6 @@
+# Log files
+*.log
+logs/
+
+# nginx temporary directories
+*_temp/

@@ -1,0 +1,33 @@
+body {
+  margin: 0;
+  padding: 0;
+}
+
+table {
+  border-spacing: 10px 20px;
+}
+
+pre {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.client-area {
+  position: absolute;
+  top: 0px;
+  bottom: 0px;
+  width: 100%;
+  overflow: auto;
+}
+
+.avatar {
+  width: 48px;
+  height: 48px;
+}
+
+.bubble {
+  border-radius: 8px;
+  padding: 0px 16px 0px 16px;
+  display: inline-block;
+  background-color: #f1f1f1;
+}
