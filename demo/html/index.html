@@ -129,6 +129,7 @@
           this.handleMessage(JSON.parse(evt.data))
         }
         this.ws = ws
+        this.keepalive()
       }
     },
     methods: {
@@ -144,6 +145,14 @@
           this.text = ''
           this.autoScroll()
         }
+      },
+      keepalive() {
+        setTimeout(() => {
+          if (this.ws) {
+            this.ws.send(JSON.stringify({ role: 'user' }))
+            this.keepalive()
+          }
+        }, 30000)
       },
       handleMessage(msg) {
         if (msg.role === 'system') {
