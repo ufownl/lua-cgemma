@@ -1,21 +1,25 @@
+-- Create a Gemma instance
+local gemma, err = require("cgemma").new({
+  tokenizer = "tokenizer.spm",
+  model = "2b-it",
+  compressed_weights = "2b-it-sfp.sbs"
+})
+if not gemma then
+  print("Opoos! ", err)
+  return
+end
+
 local function implement(declaration, description)
   local name = string.match(declaration, "^def%s+([a-zA-Z0-9_]+)")
   if not name then
     return nil, "Bad function declaration."
   end
-  local gemma, err = require("cgemma").new({
-    tokenizer = "tokenizer.spm",
-    model = "2b-it",
-    compressed_weights = "2b-it-sfp.sbs"
-  })
-  if not gemma then
-    return nil, err
+  local session, err = gemma:session()
+  if not session then
+    print("Opoos! ", err)
+    return
   end
-  local ok, err = gemma:start_session()
-  if not ok then
-    return nil, err
-  end
-  local ok, err = gemma(string.format("You are now the following python function: ```# %s\n%s```\n\nOnly respond with your `return` value. Do not include any other explanatory text in your response.", description, declaration))
+  local ok, err = session(string.format("You are now the following python function: ```# %s\n%s```\n\nOnly respond with your `return` value. Do not include any other explanatory text in your response.", description, declaration))
   if not ok then
     return nil, err
   end
@@ -25,7 +29,7 @@ local function implement(declaration, description)
     for i, v in ipairs(args) do
       text = text..", "..(type(v) ~= nil and v or "None")
     end
-    return gemma(string.format("%s(%s)", name, string.sub(text, 3)))
+    return session(string.format("%s(%s)", name, string.sub(text, 3)))
   end
 end
 
