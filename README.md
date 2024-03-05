@@ -33,32 +33,35 @@ if not gemma then
   return
 end
 
+-- Create a chat session
+local session, seed = gemma:session()
+if not session then
+  print("Opoos! ", seed)
+  return
+end
+
+print("Random seed of session: ", seed)
 while true do
-  -- Start a new chat session
-  local seed, err = gemma:start_session()
-  if not seed then
-    print("Opoos! ", err)
-    return
-  end
-  print("New session started")
-  print("Random seed of current session: ", seed)
+  print("New conversation started")
 
   -- Multi-turn chat
-  while gemma:ready() do
+  while session:ready() do
     io.write("> ")
     local text = io.read()
     if not text then
       print("End of file")
       return
     end
-    local reply, err = gemma(text)
+    local reply, err = session(text)
     if not reply then
       print("Opoos! ", err)
       return
     end
     print("reply: ", reply)
   end
+
   print("Exceed the maximum number of tokens")
+  session:reset()
 end
 ```
 
@@ -97,13 +100,13 @@ A successful call returns a scheduler instance. Otherwise, it returns `nil` and 
 
 The only parameter `num_threads` indicates the number of threads in the internal thread pool. If not provided or `num_threads <= 0`, it will create a default scheduler with the number of threads depending on the concurrent threads supported by the implementation.
 
-#### cgemma.instance.start_session
+#### cgemma.instance.session
 
-**syntax:** `<number>seed, <string>err = inst:start_session([<table>options])`
+**syntax:** `<cgemma.session>sess, <number or string>seed = inst:session([<table>options])`
 
-Start a new chat session.
+Create a chat session.
 
-A successful call returns the random seed of the session. Otherwise, it returns `nil` and a string describing the error.
+A successful call returns the session and its random seed. Otherwise, it returns `nil` and a string describing the error.
 
 Available options and default values:
 
@@ -116,15 +119,21 @@ Available options and default values:
 }
 ```
 
-#### cgemma.instance.ready
+#### cgemma.session.ready
 
-**syntax:** `<boolean>ok = inst:ready()`
+**syntax:** `<boolean>ok = sess:ready()`
 
-Check if the Gemma instance is ready to chat.
+Check if the session is ready to chat.
 
-#### metatable(cgemma.instance).__call
+#### cgemma.session.reset
 
-**syntax:** `<string or boolean>reply, <string>err = inst(<string>text[, <function>stream])`
+**syntax:** `sess:reset()`
+
+Reset the session to start a new conversation.
+
+#### metatable(cgemma.session).__call
+
+**syntax:** `<string or boolean>reply, <string>err = sess(<string>text[, <function>stream])`
 
 Generate reply.
 
