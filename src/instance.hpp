@@ -17,8 +17,6 @@ public:
   scheduler& sched() const { return *sched_; }
   gcpp::Gemma& model() const { return *model_; }
 
-  std::unique_ptr<session> current_session;
-
   static void declare(lua_State* L);
   static instance* check(lua_State* L, int index);
   static int create(lua_State* L);

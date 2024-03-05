@@ -1,161 +1,15 @@
 #include "instance.hpp"
 #include "scheduler.hpp"
 #include "session.hpp"
-#include <util/app.h>
 #include <stdexcept>
-#include <string>
 
 namespace {
 
 constexpr const char* name = "cgemma.instance";
 
-std::vector<int> text2prompt(cgemma::instance* inst, std::string text) {
-  if (inst->model().model_training == gcpp::ModelTraining::GEMMA_IT) {
-    text = "<start_of_turn>user\n" + text + "<end_of_turn>\n<start_of_turn>model\n";
-    if (inst->current_session->pos() > 0) {
-      text = "<end_of_turn>\n" + text;
-    }
-  }
-  std::vector<int> prompt;
-  if (inst->current_session->pos() == 0) {
-    prompt.push_back(2);
-  }
-  if (auto status = inst->model().Tokenizer().Encode(text, &prompt); !status.ok()) {
-    throw status;
-  }
-  return prompt;
-}
-
-void generate(cgemma::instance* inst, std::vector<int>& prompt, const gcpp::StreamFunc& stream_token) {
-  gcpp::GenerateGemma(inst->model(), inst->current_session->args(), prompt, inst->current_session->pos(), inst->sched().pool(), inst->sched().inner_pool(), stream_token, [](int) { return true; }, inst->current_session->rnd(), 0);
-  if (inst->current_session->pos() >= inst->current_session->args().max_tokens) {
-    inst->current_session = nullptr;
-  }
-}
-
-int stream_mode(lua_State* L, cgemma::instance* inst, const char* text) {
-  try {
-    auto prompt = text2prompt(inst, text);
-    size_t pos = 0;
-    generate(inst, prompt, [&](int token, float) {
-      lua_pushvalue(L, 3);
-      if (pos >= prompt.size() && token != gcpp::EOS_ID) {
-        std::string token_text;
-        if (auto status = inst->model().Tokenizer().Decode(std::vector<int>{token}, &token_text); !status.ok()) {
-          throw status;
-        }
-        lua_pushlstring(L, token_text.data(), token_text.size());
-      } else {
-        lua_pushnil(L);
-      }
-      lua_pushinteger(L, pos);
-      lua_pushinteger(L, prompt.size());
-      lua_call(L, 3, 1);
-      auto res = lua_toboolean(L, -1);
-      lua_pop(L, 1);
-      inst->current_session->incr_pos(1);
-      ++pos;
-      return res ? true : false;
-    });
-    lua_pushboolean(L, 1);
-    return 1;
-  } catch (const sentencepiece::util::Status& status) {
-    lua_pushnil(L);
-    lua_pushstring(L, status.ToString().c_str());
-    return 2;
-  }
-}
-
-int normal_mode(lua_State* L, cgemma::instance* inst, const char* text) {
-  try {
-    auto prompt = text2prompt(inst, text);
-    std::vector<int> output;
-    size_t pos = 0;
-    generate(inst, prompt, [&](int token, float) {
-      if (pos >= prompt.size() && token != gcpp::EOS_ID) {
-        output.push_back(token);
-      }
-      inst->current_session->incr_pos(1);
-      ++pos;
-      return true;
-    });
-    std::string resp;
-    if (auto status = inst->model().Tokenizer().Decode(output, &resp); !status.ok()) {
-      throw status;
-    }
-    lua_pushlstring(L, resp.data(), resp.size());
-    return 1;
-  } catch (const sentencepiece::util::Status& status) {
-    lua_pushnil(L);
-    lua_pushstring(L, status.ToString().c_str());
-    return 2;
-  }
-}
-
-int call(lua_State* L) {
-  auto inst = cgemma::instance::check(L, 1);
-  if (!inst->current_session) {
-    lua_pushnil(L);
-    lua_pushliteral(L, "Session has ended.");
-    return 2;
-  }
-  try {
-    auto text = luaL_checkstring(L, 2);
-    return lua_isfunction(L, 3) ? stream_mode(L, inst, text) : normal_mode(L, inst, text);
-  } catch (const std::exception& e) {
-    lua_pushnil(L);
-    lua_pushstring(L, e.what());
-    return 2;
-  }
-}
-
 int destroy(lua_State* L) {
   cgemma::instance::check(L, 1)->~instance();
   return 0;
-}
-
-int start_session(lua_State* L) {
-  auto nargs = lua_gettop(L);
-  auto inst = cgemma::instance::check(L, 1);
-  try {
-    std::random_device rd;
-    auto seed = rd();
-    constexpr const char* available_options[] = {"--max_tokens", "--max_generated_tokens", "--temperature"};
-    constexpr const int n = sizeof(available_options) / sizeof(available_options[0]);
-    int argc = 1;
-    char* argv[n * 2 + 1] = {const_cast<char*>("lua-cgemma")};
-    if (nargs > 1) {
-      luaL_checktype(L, 2, LUA_TTABLE);
-      lua_getfield(L, 2, "seed");
-      if (lua_isnumber(L, -1)) {
-        seed = lua_tointeger(L, -1);
-      }
-      lua_pop(L, 1);
-      for (auto opt: available_options) {
-        auto k = opt + 2;
-        lua_getfield(L, 2, k);
-        auto v = lua_tostring(L, -1);
-        if (v) {
-          argv[argc++] = const_cast<char*>(opt);
-          argv[argc++] = const_cast<char*>(v);
-        }
-        lua_pop(L, 1);
-      }
-    }
-    inst->current_session = std::make_unique<cgemma::session>(seed, argc, argv);
-    lua_pushinteger(L, seed);
-    return 1;
-  } catch (const std::exception& e) {
-    lua_pushnil(L);
-    lua_pushstring(L, e.what());
-    return 2;
-  }
-}
-
-int ready(lua_State* L) {
-  auto inst = cgemma::instance::check(L, 1);
-  lua_pushboolean(L, inst->current_session ? 1 : 0);
-  return 1;
 }
 
 }
@@ -177,13 +31,11 @@ instance::instance(int argc, char* argv[], scheduler* s)
 
 void instance::declare(lua_State* L) {
   constexpr const luaL_Reg metatable[] = {
-    {"__call", call},
     {"__gc", destroy},
     {nullptr, nullptr}
   };
   constexpr const luaL_Reg methods[] = {
-    {"start_session", start_session},
-    {"ready", ready},
+    {"session", session::create},
     {nullptr, nullptr}
   };
   luaL_newmetatable(L, name);

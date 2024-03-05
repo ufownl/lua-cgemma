@@ -1,5 +1,6 @@
 #include "cgemma.hpp"
 #include "instance.hpp"
+#include "session.hpp"
 #include "scheduler.hpp"
 
 int luaopen_cgemma(lua_State* L) {
@@ -9,6 +10,7 @@ int luaopen_cgemma(lua_State* L) {
     {nullptr, nullptr}
   };
   cgemma::instance::declare(L);
+  cgemma::session::declare(L);
   cgemma::scheduler::declare(L);
   lua_newtable(L);
   luaL_register(L, nullptr, entries);
