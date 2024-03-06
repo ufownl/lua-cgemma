@@ -152,3 +152,7 @@ function stream(token, pos, prompt_size)
   return true
 end
 ```
+
+## License
+
+BSD-3-Clause license. See `LICENSE` for details.
