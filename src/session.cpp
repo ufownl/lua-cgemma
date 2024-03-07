@@ -128,7 +128,7 @@ session::session(const instance* inst, unsigned int seed, int argc, char* argv[]
   : inst_(inst)
   , rnd_(seed)
   , args_(argc, argv)
-  , kv_cache_(inst->model().CreateKVCache()) {
+  , kv_cache_(gcpp::CreateKVCache(inst->args().ModelType())) {
   if (auto err = args_.Validate()) {
     throw std::invalid_argument(err);
   }

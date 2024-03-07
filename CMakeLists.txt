@@ -13,7 +13,7 @@ if(APPLE AND NOT DEFINED CMAKE_MACOSX_RPATH)
   set(CMAKE_MACOSX_RPATH TRUE)
 endif()
 
-FetchContent_Declare(gemma GIT_REPOSITORY https://github.com/ufownl/gemma.cpp GIT_TAG origin/feature/separated_kvcache)
+FetchContent_Declare(gemma GIT_REPOSITORY https://github.com/ufownl/gemma.cpp GIT_TAG origin/experiment)
 FetchContent_GetProperties(gemma)
 if(NOT gemma_POPULATED)
   FetchContent_Populate(gemma)

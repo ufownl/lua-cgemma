@@ -14,6 +14,7 @@ class instance {
 public:
   explicit instance(int argc, char* argv[], scheduler* s);
 
+  const gcpp::LoaderArgs& args() const { return args_; }
   scheduler& sched() const { return *sched_; }
   gcpp::Gemma& model() const { return *model_; }
 
