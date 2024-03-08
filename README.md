@@ -133,6 +133,22 @@ Check if the session is ready to chat.
 
 Reset the session to start a new conversation.
 
+#### cgemma.session.dump
+
+**syntax:** `<string>data, <string>err = sess:dump()`
+
+Dump the current state of the session.
+
+A successful call returns the state data (binary) of the session. Otherwise, it returns `nil` and a string describing the error.
+
+#### cgemma.session.restore
+
+**syntax:** `<boolean>ok, <string>err = sess:restore(<string>data)`
+
+Restore a session from the given state data.
+
+A successful call returns `true`. Otherwise, it returns `false` and a string describing the error.
+
 #### metatable(cgemma.session).__call
 
 **syntax:** `<string or boolean>reply, <string>err = sess(<string>text[, <function>stream])`
