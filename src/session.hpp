@@ -19,8 +19,8 @@ public:
   size_t pos() const { return pos_; }
   gcpp::KVCache& kv_cache() { return kv_cache_; }
 
+  void set_pos(size_t pos) { pos_ = pos; }
   void incr_pos(size_t n) { pos_ += n; }
-  void reset_pos() { pos_ = 0; }
 
   static void declare(lua_State* L);
   static session* check(lua_State* L, int index);

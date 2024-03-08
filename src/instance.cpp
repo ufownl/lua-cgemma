@@ -5,7 +5,7 @@
 
 namespace {
 
-constexpr const char* name = "cgemma.instance";
+constexpr const char name[] = "cgemma.instance";
 
 int destroy(lua_State* L) {
   cgemma::instance::check(L, 1)->~instance();
@@ -40,7 +40,7 @@ void instance::declare(lua_State* L) {
   };
   luaL_newmetatable(L, name);
   luaL_register(L, nullptr, metatable);
-  lua_pushstring(L, name);
+  lua_pushlstring(L, name, sizeof(name) - 1);
   lua_setfield(L, -2, "_NAME");
   lua_newtable(L);
   luaL_register(L, nullptr, methods);

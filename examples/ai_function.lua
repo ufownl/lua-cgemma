@@ -14,7 +14,7 @@ local function implement(declaration, description)
   if not name then
     return nil, "Bad function declaration."
   end
-  local session, err = gemma:session()
+  local session, err = gemma:session({ temperature = 0.1 })
   if not session then
     print("Opoos! ", err)
     return

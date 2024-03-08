@@ -4,7 +4,7 @@
 
 namespace {
 
-constexpr const char* name = "cgemma.scheduler";
+constexpr const char name[] = "cgemma.scheduler";
 
 int destroy(lua_State* L) {
   cgemma::scheduler::check(L, 1)->~scheduler();
@@ -31,7 +31,7 @@ void scheduler::declare(lua_State* L) {
   };
   luaL_newmetatable(L, name);
   luaL_register(L, nullptr, metatable);
-  lua_pushstring(L, name);
+  lua_pushlstring(L, name, sizeof(name) - 1);
   lua_setfield(L, -2, "_NAME");
   lua_newtable(L);
   luaL_register(L, nullptr, methods);
