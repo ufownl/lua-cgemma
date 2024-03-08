@@ -166,4 +166,4 @@ end
 
 ## License
 
-BSD-3-Clause license. See `LICENSE` for details.
+BSD-3-Clause license. See [LICENSE](https://github.com/ufownl/lua-cgemma?tab=BSD-3-Clause-1-ov-file) for details.
