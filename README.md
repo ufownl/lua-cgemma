@@ -17,6 +17,8 @@ cmake .. && make
 sudo make install
 ```
 
+**3rd step:** See [here](https://github.com/google/gemma.cpp?tab=readme-ov-file#step-1-obtain-model-weights-and-tokenizer-from-kaggle-or-hugging-face-hub) to learn how to obtain model weights and tokenizer.
+
 ## Usage
 
 ### Synopsis
