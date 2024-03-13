@@ -87,6 +87,9 @@ Available options:
                     -- instruction-tuned), or 7b-pt (7B parameters, pretrained).
                     -- (required)
   compressed_weights = "/path/to/2b-it-sfp.sbs",  -- Path of compressed weights file. (required)
+  weights = "/path/to/weights.sbs",  -- Path of uncompressed weights file. Only required if
+                                     -- compressed weights file is not present and needs
+                                     -- to be regenerated.
   scheduler = sched_inst,  -- Instance of scheduler, if not provided a default scheduler
                            -- will be attached.
 }
