@@ -20,14 +20,19 @@ std::vector<int> text2prompt(cgemma::session* sess, std::string text) {
   if (sess->pos() == 0) {
     prompt.push_back(2);
   }
-  if (auto status = sess->inst()->model().Tokenizer().Encode(text, &prompt); !status.ok()) {
+  if (auto status = sess->inst()->model().Tokenizer()->Encode(text, &prompt); !status.ok()) {
     throw status;
   }
   return prompt;
 }
 
 void generate(cgemma::session* sess, std::vector<int>& prompt, const gcpp::StreamFunc& stream_token) {
-  gcpp::GenerateGemma(sess->inst()->model(), sess->args(), prompt, sess->pos(), sess->kv_cache(), sess->inst()->sched().pool(), sess->inst()->sched().inner_pool(), stream_token, [](int) { return true; }, sess->rnd(), 0);
+  gcpp::GenerateGemma(sess->inst()->model(), {
+    .max_tokens = sess->args().max_tokens,
+    .max_generated_tokens = sess->args().max_generated_tokens,
+    .temperature = sess->args().temperature,
+    .verbosity = 0
+  }, prompt, sess->pos(), sess->kv_cache(), sess->inst()->sched().pool(), stream_token, sess->rnd());
 }
 
 int stream_mode(lua_State* L, cgemma::session* sess, const char* text) {
@@ -38,7 +43,7 @@ int stream_mode(lua_State* L, cgemma::session* sess, const char* text) {
       lua_pushvalue(L, 3);
       if (pos >= prompt.size() && token != gcpp::EOS_ID) {
         std::string token_text;
-        if (auto status = sess->inst()->model().Tokenizer().Decode(std::vector<int>{token}, &token_text); !status.ok()) {
+        if (auto status = sess->inst()->model().Tokenizer()->Decode(std::vector<int>{token}, &token_text); !status.ok()) {
           throw status;
         }
         lua_pushlstring(L, token_text.data(), token_text.size());
@@ -77,7 +82,7 @@ int normal_mode(lua_State* L, cgemma::session* sess, const char* text) {
       return true;
     });
     std::string resp;
-    if (auto status = sess->inst()->model().Tokenizer().Decode(output, &resp); !status.ok()) {
+    if (auto status = sess->inst()->model().Tokenizer()->Decode(output, &resp); !status.ok()) {
       throw status;
     }
     lua_pushlstring(L, resp.data(), resp.size());

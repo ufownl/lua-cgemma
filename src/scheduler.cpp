@@ -16,8 +16,7 @@ int destroy(lua_State* L) {
 namespace cgemma {
 
 scheduler::scheduler()
-  : inner_pool_(0)
-  , pool_(std::thread::hardware_concurrency()) {
+  : pool_(std::thread::hardware_concurrency()) {
   pin_threads();
 }
 

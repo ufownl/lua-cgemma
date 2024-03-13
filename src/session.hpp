@@ -3,6 +3,7 @@
 
 #include <lua.hpp>
 #include <gemma.h>
+#include <util/app.h>
 #include <random>
 
 namespace cgemma {
