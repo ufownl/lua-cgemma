@@ -136,19 +136,19 @@ Check if the session is ready to chat.
 
 Reset the session to start a new conversation.
 
-#### cgemma.session.dump
+#### cgemma.session.dumps
 
-**syntax:** `<string>data, <string>err = sess:dump()`
+**syntax:** `<string>data, <string>err = sess:dumps()`
 
-Dump the current state of the session.
+Dump the current state of the session to a Lua string.
 
-A successful call returns the state data (binary) of the session. Otherwise, it returns `nil` and a string describing the error.
+A successful call returns a Lua string that stores state data (binary) of the session. Otherwise, it returns `nil` and a string describing the error.
 
-#### cgemma.session.restore
+#### cgemma.session.loads
 
-**syntax:** `<boolean>ok, <string>err = sess:restore(<string>data)`
+**syntax:** `<boolean>ok, <string>err = sess:loads(<string>data)`
 
-Restore a session from the given state data.
+Load the state data from the given Lua string to restore a previous session.
 
 A successful call returns `true`. Otherwise, it returns `false` and a string describing the error.
 

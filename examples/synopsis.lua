@@ -21,7 +21,7 @@ while true do
   local file, err = io.open("dump.bin", "rb")
   if file then
     -- Restore the previous session from "dump.bin"
-    local ok, err = session:restore(file:read("*a"))
+    local ok, err = session:loads(file:read("*a"))
     if not ok then
       print("Opoos! ", err)
       return
@@ -38,7 +38,7 @@ while true do
     if not text then
       print("End of file, dumping current session ...")
       -- Dump the current session to "dump.bin"
-      local data, err = session:dump()
+      local data, err = session:dumps()
       if not data then
         print("Opoos! ", err)
         return

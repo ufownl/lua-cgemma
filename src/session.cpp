@@ -143,7 +143,7 @@ size_t kv_cache_size(gcpp::Model type, size_t pos) {
   }
 }
 
-int dump(lua_State* L) {
+int dumps(lua_State* L) {
   auto ud = cgemma::session::check(L, 1);
   try {
     auto typ = ud->inst()->args().ModelType();
@@ -166,7 +166,7 @@ int dump(lua_State* L) {
   }
 }
 
-int restore(lua_State* L) {
+int loads(lua_State* L) {
   auto ud = cgemma::session::check(L, 1);
   size_t n;
   auto buf = luaL_checklstring(L, 2, &n);
@@ -233,8 +233,8 @@ void session::declare(lua_State* L) {
   constexpr const luaL_Reg methods[] = {
     {"ready", ready},
     {"reset", reset},
-    {"dump", dump},
-    {"restore", restore},
+    {"dumps", dumps},
+    {"loads", loads},
     {nullptr, nullptr}
   };
   luaL_newmetatable(L, name);

@@ -45,7 +45,7 @@ end
 print()
 
 -- Dump the current session to "dump.bin"
-local data, err = session:dump()
+local data, err = session:dumps()
 if not data then
   print("Opoos! ", err)
   return
