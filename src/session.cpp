@@ -143,21 +143,53 @@ size_t kv_cache_size(gcpp::Model type, size_t pos) {
   }
 }
 
+size_t dump_impl(char* buf, const cgemma::session* sess) {
+  auto typ = sess->inst()->args().ModelType();
+  auto len = kv_cache_size(typ, sess->pos()) * sizeof(sess->kv_cache().key_cache[0]);
+  uint16_t pos = sess->pos();
+  if (buf) {
+    std::memcpy(buf, name, sizeof(name) - 1);
+    buf[sizeof(name) - 1] = static_cast<char>(typ);
+    std::memcpy(buf + sizeof(name), &pos, sizeof(pos));
+    if (len > 0) {
+      std::memcpy(buf + sizeof(name) + sizeof(pos), sess->kv_cache().key_cache.get(), len);
+      std::memcpy(buf + sizeof(name) + sizeof(pos) + len, sess->kv_cache().value_cache.get(), len);
+    }
+  }
+  return sizeof(name) + sizeof(pos) + 2 * len;
+}
+
+void load_impl(cgemma::session* sess, const char* buf, size_t n) {
+  if (n < sizeof(name) + sizeof(uint16_t)) {
+    throw std::invalid_argument("Invalid dump format: length too short");
+  }
+  for (size_t i = 0; i < sizeof(name) - 1; ++i) {
+    if (buf[i] != name[i]) {
+      throw std::invalid_argument("Invalid dump format: magic mismatch");
+    }
+  }
+  auto typ = static_cast<gcpp::Model>(buf[sizeof(name) - 1]);
+  if (typ != sess->inst()->args().ModelType()) {
+    throw std::invalid_argument("Invalid dump format: model type mismatch");
+  }
+  size_t pos = *reinterpret_cast<const uint16_t*>(buf + sizeof(name));
+  auto len = kv_cache_size(typ, pos) * sizeof(sess->kv_cache().key_cache[0]);
+  if (n != sizeof(name) + sizeof(uint16_t) + 2 * len) {
+    throw std::invalid_argument("Invalid dump format: KVCache length mismatch");
+  }
+  sess->set_pos(pos);
+  if (len > 0) {
+    std::memcpy(sess->kv_cache().key_cache.get(), buf + sizeof(name) + sizeof(uint16_t), len);
+    std::memcpy(sess->kv_cache().value_cache.get(), buf + sizeof(name) + sizeof(uint16_t) + len, len);
+  }
+}
+
 int dumps(lua_State* L) {
   auto ud = cgemma::session::check(L, 1);
   try {
-    auto typ = ud->inst()->args().ModelType();
-    auto len = kv_cache_size(typ, ud->pos()) * sizeof(ud->kv_cache().key_cache[0]);
-    uint16_t pos = ud->pos();
-    std::vector<uint8_t> buf(sizeof(name) + sizeof(pos) + 2 * len);
-    std::memcpy(buf.data(), name, sizeof(name) - 1);
-    buf[sizeof(name) - 1] = static_cast<uint8_t>(typ);
-    std::memcpy(buf.data() + sizeof(name), &pos, sizeof(pos));
-    if (len > 0) {
-      std::memcpy(buf.data() + sizeof(name) + sizeof(pos), ud->kv_cache().key_cache.get(), len);
-      std::memcpy(buf.data() + sizeof(name) + sizeof(pos) + len, ud->kv_cache().value_cache.get(), len);
-    }
-    lua_pushlstring(L, reinterpret_cast<const char*>(buf.data()), buf.size());
+    std::vector<char> buf(dump_impl(nullptr, ud));
+    dump_impl(buf.data(), ud);
+    lua_pushlstring(L, buf.data(), buf.size());
     return 1;
   } catch (const std::exception& e) {
     lua_pushnil(L);
@@ -170,37 +202,8 @@ int loads(lua_State* L) {
   auto ud = cgemma::session::check(L, 1);
   size_t n;
   auto buf = luaL_checklstring(L, 2, &n);
-  if (n < sizeof(name) + sizeof(uint16_t)) {
-    lua_pushboolean(L, 0);
-    lua_pushliteral(L, "Invalid dump format: length too short");
-    return 2;
-  }
-  for (size_t i = 0; i < sizeof(name) - 1; ++i) {
-    if (buf[i] != name[i]) {
-      lua_pushboolean(L, 0);
-      lua_pushliteral(L, "Invalid dump format: magic mismatch");
-      return 2;
-    }
-  }
-  auto typ = static_cast<gcpp::Model>(buf[sizeof(name) - 1]);
-  if (typ != ud->inst()->args().ModelType()) {
-    lua_pushboolean(L, 0);
-    lua_pushliteral(L, "Invalid dump format: model type mismatch");
-    return 2;
-  }
-  size_t pos = *reinterpret_cast<const uint16_t*>(buf + sizeof(name));
   try {
-    auto len = kv_cache_size(typ, pos) * sizeof(ud->kv_cache().key_cache[0]);
-    if (n != sizeof(name) + sizeof(uint16_t) + 2 * len) {
-      lua_pushboolean(L, 0);
-      lua_pushliteral(L, "Invalid dump format: KVCache length mismatch");
-      return 2;
-    }
-    ud->set_pos(pos);
-    if (len > 0) {
-      std::memcpy(ud->kv_cache().key_cache.get(), buf + sizeof(name) + sizeof(uint16_t), len);
-      std::memcpy(ud->kv_cache().value_cache.get(), buf + sizeof(name) + sizeof(uint16_t) + len, len);
-    }
+    load_impl(ud, buf, n);
     lua_pushboolean(L, 1);
     return 1;
   } catch (const std::exception& e) {

@@ -14,10 +14,11 @@ class session {
 public:
   explicit session(const instance* inst, unsigned int seed, int argc, char* argv[]);
 
-  const instance* inst() { return inst_; }
+  const instance* inst() const { return inst_; }
   std::mt19937& rnd() { return rnd_; }
   const gcpp::InferenceArgs& args() const { return args_; }
   size_t pos() const { return pos_; }
+  const gcpp::KVCache& kv_cache() const { return kv_cache_; }
   gcpp::KVCache& kv_cache() { return kv_cache_; }
 
   void set_pos(size_t pos) { pos_ = pos; }
