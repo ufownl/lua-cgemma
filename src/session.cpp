@@ -10,18 +10,32 @@ namespace {
 
 constexpr const char name[] = "cgemma.session";
 
-std::vector<int> text2prompt(cgemma::session* sess, std::string text) {
+std::vector<int> text2prompt(cgemma::session* sess, const char* text) {
+  constexpr const char user_sot[] = "<start_of_turn>user\n";
+  constexpr const char model_sot[] = "<start_of_turn>model\n";
+  constexpr const char eot[] = "<end_of_turn>\n";
+  std::string s;
   if (sess->inst()->model().model_training == gcpp::ModelTraining::GEMMA_IT) {
-    text = "<start_of_turn>user\n" + text + "<end_of_turn>\n<start_of_turn>model\n";
+    s.reserve(sizeof(eot) - 1
+            + sizeof(user_sot) - 1
+            + std::strlen(text)
+            + sizeof(eot) - 1
+            + sizeof(model_sot) - 1);
     if (sess->pos() > 0) {
-      text = "<end_of_turn>\n" + text;
+      s.append(eot);
     }
+    s.append(user_sot);
+    s.append(text);
+    s.append(eot);
+    s.append(model_sot);
+  } else {
+    s.append(text, std::strlen(text));
   }
   std::vector<int> prompt;
   if (sess->pos() == 0) {
     prompt.push_back(2);
   }
-  if (auto status = sess->inst()->model().Tokenizer()->Encode(text, &prompt); !status.ok()) {
+  if (auto status = sess->inst()->model().Tokenizer()->Encode(s, &prompt); !status.ok()) {
     throw status;
   }
   return prompt;
