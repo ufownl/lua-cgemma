@@ -1,7 +1,8 @@
 find_package(LuaJIT REQUIRED)
 
 aux_source_directory(. SOURCES)
-add_library(cgemma MODULE ${SOURCES})
+aux_source_directory(utils UTILS_SOURCES)
+add_library(cgemma MODULE ${SOURCES} ${UTILS_SOURCES})
 target_include_directories(cgemma PRIVATE ${LUA_INCLUDE_DIR})
 target_include_directories(cgemma PRIVATE ${gemma_SOURCE_DIR})
 target_include_directories(cgemma PRIVATE ${sentencepiece_SOURCE_DIR})

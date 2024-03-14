@@ -1,6 +1,7 @@
 #include "session.hpp"
 #include "instance.hpp"
 #include "scheduler.hpp"
+#include "utils/file_io.hpp"
 #include <stdexcept>
 #include <vector>
 #include <cstring>
@@ -213,6 +214,36 @@ int loads(lua_State* L) {
   }
 }
 
+int dump(lua_State* L) {
+  auto ud = cgemma::session::check(L, 1);
+  auto path = luaL_checkstring(L, 2);
+  try {
+    cgemma::utils::file_writer fout(path, dump_impl(nullptr, ud));
+    dump_impl(fout.buffer(), ud);
+    lua_pushboolean(L, 1);
+    return 1;
+  } catch (const std::exception& e) {
+    lua_pushboolean(L, 0);
+    lua_pushstring(L, e.what());
+    return 2;
+  }
+}
+
+int load(lua_State* L) {
+  auto ud = cgemma::session::check(L, 1);
+  auto path = luaL_checkstring(L, 2);
+  try {
+    cgemma::utils::file_reader fin(path);
+    load_impl(ud, fin.buffer(), fin.size());
+    lua_pushboolean(L, 1);
+    return 1;
+  } catch (const std::exception& e) {
+    lua_pushboolean(L, 0);
+    lua_pushstring(L, e.what());
+    return 2;
+  }
+}
+
 }
 
 namespace cgemma {
@@ -238,6 +269,8 @@ void session::declare(lua_State* L) {
     {"reset", reset},
     {"dumps", dumps},
     {"loads", loads},
+    {"dump", dump},
+    {"load", load},
     {nullptr, nullptr}
   };
   luaL_newmetatable(L, name);

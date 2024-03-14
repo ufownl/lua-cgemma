@@ -18,14 +18,9 @@ end
 
 print("Random seed of session: ", seed)
 while true do
-  local file, err = io.open("dump.bin", "rb")
-  if file then
-    -- Restore the previous session from "dump.bin"
-    local ok, err = session:loads(file:read("*a"))
-    if not ok then
-      print("Opoos! ", err)
-      return
-    end
+  -- Restore the previous session from "dump.bin"
+  local ok, err = session:load("dump.bin")
+  if ok then
     print("Previous conversation restored")
   else
     print("New conversation started")
@@ -38,18 +33,11 @@ while true do
     if not text then
       print("End of file, dumping current session ...")
       -- Dump the current session to "dump.bin"
-      local data, err = session:dumps()
-      if not data then
+      local ok, err = session:dump("dump.bin")
+      if not ok then
         print("Opoos! ", err)
         return
       end
-      local file, err = io.open("dump.bin", "wb")
-      if not file then
-        print("Opoos! ", err)
-        return
-      end
-      file:write(data)
-      file:close()
       print("Done")
       return
     end

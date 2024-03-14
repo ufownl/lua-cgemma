@@ -152,6 +152,22 @@ Load the state data from the given Lua string to restore a previous session.
 
 A successful call returns `true`. Otherwise, it returns `false` and a string describing the error.
 
+#### cgemma.session.dump
+
+**syntax:** `<boolean>ok, <string>err = sess:dump(<string>path)`
+
+Dump the current state of the session to a specific file.
+
+A successful call returns `true`. Otherwise, it returns `false` and a string describing the error.
+
+#### cgemma.session.load
+
+**syntax:** `<boolean>ok, <string>err = sess:load(<string>path)`
+
+Load the state data from the given file to restore a previous session.
+
+A successful call returns `true`. Otherwise, it returns `false` and a string describing the error.
+
 #### metatable(cgemma.session).__call
 
 **syntax:** `<string or boolean>reply, <string>err = sess(<string>text[, <function>stream])`

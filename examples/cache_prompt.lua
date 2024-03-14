@@ -45,17 +45,10 @@ end
 print()
 
 -- Dump the current session to "dump.bin"
-local data, err = session:dumps()
-if not data then
+local ok, err = session:dump("dump.bin")
+if not ok then
   print("Opoos! ", err)
   return
 end
-local file, err = io.open("dump.bin", "wb")
-if not file then
-  print("Opoos! ", err)
-  return
-end
-file:write(data)
-file:close()
 print()
 print("Done! Session states of the prompt have been dumped to \"dump.bin\"")
