@@ -2,7 +2,7 @@ print("Loading model ...")
 -- Create a Gemma instance
 local gemma, err = require("cgemma").new({
   tokenizer = "tokenizer.spm",
-  model = "2b-it",
+  model = "2b-pt",
   compressed_weights = "2b-it-sfp.sbs"
 })
 if not gemma then
