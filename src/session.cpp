@@ -70,9 +70,13 @@ int stream_mode(lua_State* L, cgemma::session* sess, const char* text) {
       lua_call(L, 3, 1);
       auto res = lua_toboolean(L, -1);
       lua_pop(L, 1);
-      sess->incr_pos(1);
-      ++pos;
-      return res ? true : false;
+      if (res) {
+        sess->incr_pos(1);
+        ++pos;
+        return true;
+      } else {
+        return false;
+      }
     });
     lua_pushboolean(L, 1);
     return 1;
