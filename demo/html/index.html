@@ -41,6 +41,7 @@
                 </div>
                 <div :ref="'msg_content_' + idx" class="bubble">
                   <vue-markdown v-if="msg.markdown">{{ msg.text }}</vue-markdown>
+                  <pre v-else-if="msg.text===''" class="el-icon-loading" style="font-size:16px"></pre>
                   <pre v-else style="font-size:16px">{{ msg.text }}</pre>
                 </div>
               </div>
