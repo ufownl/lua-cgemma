@@ -20,4 +20,17 @@ This demo requires [OpenResty](https://openresty.org/) to run, see [here](https:
 
 **4th step:** Open [http://localhost:8042](http://localhost:8042) with your browser, and then you can chat with [Gemma](https://ai.google.dev/gemma).
 
-https://github.com/ufownl/lua-cgemma/assets/9405195/053d674a-a7b0-4e76-8832-c2c43bc63c1e
+<table>
+  <thead>
+    <tr>
+      <th>Snapshot</th>
+      <th>Video</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><img src="https://github.com/ufownl/lua-cgemma/assets/9405195/65064d4e-8064-4c55-92d4-52ca7ad01198"></td>
+      <td><video src="https://github.com/ufownl/lua-cgemma/assets/9405195/053d674a-a7b0-4e76-8832-c2c43bc63c1e"></td>
+    </tr>
+  </tbody>
+</table>
