@@ -11,7 +11,9 @@ if not gemma then
 end
 
 -- Create a chat session
-local session, seed = gemma:session()
+local session, seed = gemma:session({
+  max_generated_tokens = 1
+})
 if not session then
   print("Opoos! ", seed)
   return
