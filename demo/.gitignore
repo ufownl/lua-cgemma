@@ -1,6 +1,6 @@
-# Log files
+# log and pid files
 *.log
-logs/
+*.pid
 
 # nginx temporary directories
 *_temp/
