@@ -2,6 +2,14 @@
 
 Lua bindings for [gemma.cpp](https://github.com/google/gemma.cpp).
 
+## Requirements
+
+Before starting, you should have installed:
+
+- [CMake](https://cmake.org/)
+- C++ compiler, supporting at least C++17
+- [LuaJIT](https://luajit.org/), recommended to install [OpenResty](https://openresty.org/) directly
+
 ## Installation
 
 **1st step:** Clone the source code from [GitHub](https://github.com/ufownl/lua-cgemma): `git clone https://github.com/ufownl/lua-cgemma.git`
