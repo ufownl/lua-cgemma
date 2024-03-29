@@ -8,7 +8,7 @@ This demo requires [OpenResty](https://openresty.org/) to run, see [here](https:
 
 *The 7B variation is also OK, but the relevant scripts need to be modified accordingly.*
 
-**2nd step:** Generate the context state of chat session: `cat prompt.md | resty ../examples/cache_prompt.lua`
+**2nd step:** Generate the context state of chat session: `resty print_prompt.lua | resty ../examples/cache_prompt.lua`
 
 *This step is optional, you can run this demo with no context state or any context state dumped from other chat sessions.*
 
