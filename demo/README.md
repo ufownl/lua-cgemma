@@ -16,7 +16,7 @@ This demo requires [OpenResty](https://openresty.org/) to run, see [here](https:
 
 *When you want to stop the demo server, just run: `openresty -p . -c cgemma_demo.conf -s stop`*
 
-*[OpenResty](https://openresty.org/)'s core is [NGINX](https://nginx.org/), so the commands are extremely similar to NGINX.*
+*[OpenResty](https://openresty.org/)'s core is [NGINX](https://nginx.org/), so the commands are extremely similar to [NGINX](https://nginx.org/).*
 
 **4th step:** Open [http://localhost:8042](http://localhost:8042) with your browser, and then you can chat with [Gemma](https://ai.google.dev/gemma).
 
