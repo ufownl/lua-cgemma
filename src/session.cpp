@@ -32,11 +32,11 @@ std::vector<int> text2prompt(cgemma::session* sess, const char* text) {
     s.append(text, std::strlen(text));
   }
   std::vector<int> prompt;
-  if (sess->pos() == 0) {
-    prompt.push_back(2);
-  }
   if (auto status = sess->inst()->model().Tokenizer()->Encode(s, &prompt); !status.ok()) {
     throw status;
+  }
+  if (sess->pos() == 0) {
+    prompt.insert(prompt.cbegin(), 2);
   }
   return prompt;
 }
