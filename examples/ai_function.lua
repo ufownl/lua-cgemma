@@ -14,16 +14,30 @@ local function implement(declaration, description)
   if not name then
     return nil, "Bad function declaration."
   end
-  local session, err = gemma:session({ temperature = 0.1 })
+  local session, err = gemma:session({
+    max_generated_tokens = 1
+  })
   if not session then
     print("Opoos! ", err)
     return
   end
-  local ok, err = session(string.format("You are now the following python function: ```# %s\n%s```\n\nOnly respond with your `return` value. Do not include any other explanatory text in your response.", description, declaration))
+  local ok, err = session(string.format("You are now the following python function: ```# %s\n%s```\n\nOnly respond with your `return` value. Do not include any other explanatory text in your response.", description, declaration), function(token, pos, prompt_size)
+    return pos < prompt_size
+  end)
   if not ok then
     return nil, err
   end
+  local context, err = session:dumps()
+  if not context then
+    return nil, err
+  end
   return function(...)
+    local session, err = gemma:session()
+    if not session then
+      print("Opoos! ", err)
+      return
+    end
+    session:loads(context)
     local args = {...}
     local text = ""
     for i, v in ipairs(args) do
@@ -58,8 +72,8 @@ if not resp then
   return
 end
 print(resp)
-print("Calling `multiply(7, 6)` ...")
-local resp, err = multiply(7, 6)
+print("Calling `multiply(2, 9)` ...")
+local resp, err = multiply(2, 9)
 if not resp then
   print("Opoos! ", err)
   return
