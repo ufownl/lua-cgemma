@@ -1,3 +1,4 @@
+[![Open in Kaggle](https://img.shields.io/badge/Open_in_Kaggle-blue?style=plastic&logo=kaggle&labelColor=grey)](https://www.kaggle.com/code/ufownl/how-to-start-a-gemma-chatbot) [![Open in HF Spaces](https://img.shields.io/badge/%F0%9F%A4%97-Open_in_HF_Spaces-white?style=plastic)](https://huggingface.co/spaces/RangerUFO/lua-cgemma-demo)
 # lua-cgemma
 
 Lua bindings for [gemma.cpp](https://github.com/google/gemma.cpp).
