@@ -32,8 +32,8 @@ std::vector<int> text2prompt(cgemma::session* sess, const char* text) {
     s.append(text, std::strlen(text));
   }
   std::vector<int> prompt;
-  if (auto status = sess->inst()->model().Tokenizer()->Encode(s, &prompt); !status.ok()) {
-    throw status;
+  if (!sess->inst()->model().Tokenizer()->Encode(s, &prompt)) {
+    throw std::runtime_error("Tokenizer encoding failed. (text2prompt)");
   }
   if (sess->pos() == 0) {
     prompt.insert(prompt.cbegin(), 2);
@@ -51,66 +51,54 @@ void generate(cgemma::session* sess, std::vector<int>& prompt, const gcpp::Strea
 }
 
 int stream_mode(lua_State* L, cgemma::session* sess, const char* text) {
-  try {
-    auto prompt = text2prompt(sess, text);
-    size_t pos = 0;
-    generate(sess, prompt, [&](int token, float) {
-      lua_pushvalue(L, 3);
-      if (pos >= prompt.size() && token != gcpp::EOS_ID) {
-        std::string token_text;
-        if (auto status = sess->inst()->model().Tokenizer()->Decode(std::vector<int>{token}, &token_text); !status.ok()) {
-          throw status;
-        }
-        lua_pushlstring(L, token_text.data(), token_text.size());
-      } else {
-        lua_pushnil(L);
+  auto prompt = text2prompt(sess, text);
+  size_t pos = 0;
+  generate(sess, prompt, [&](int token, float) {
+    lua_pushvalue(L, 3);
+    if (pos >= prompt.size() && token != gcpp::EOS_ID) {
+      std::string token_text;
+      if (!sess->inst()->model().Tokenizer()->Decode(std::vector<int>{token}, &token_text)) {
+        throw std::runtime_error("Tokenizer decoding failed. (stream_mode)");
       }
-      lua_pushinteger(L, pos);
-      lua_pushinteger(L, prompt.size());
-      lua_call(L, 3, 1);
-      auto res = lua_toboolean(L, -1);
-      lua_pop(L, 1);
-      if (res) {
-        sess->incr_pos(1);
-        ++pos;
-        return true;
-      } else {
-        return false;
-      }
-    });
-    lua_pushboolean(L, 1);
-    return 1;
-  } catch (const sentencepiece::util::Status& status) {
-    lua_pushnil(L);
-    lua_pushstring(L, status.ToString().c_str());
-    return 2;
-  }
-}
-
-int normal_mode(lua_State* L, cgemma::session* sess, const char* text) {
-  try {
-    auto prompt = text2prompt(sess, text);
-    std::vector<int> output;
-    size_t pos = 0;
-    generate(sess, prompt, [&](int token, float) {
-      if (pos >= prompt.size() && token != gcpp::EOS_ID) {
-        output.push_back(token);
-      }
+      lua_pushlstring(L, token_text.data(), token_text.size());
+    } else {
+      lua_pushnil(L);
+    }
+    lua_pushinteger(L, pos);
+    lua_pushinteger(L, prompt.size());
+    lua_call(L, 3, 1);
+    auto res = lua_toboolean(L, -1);
+    lua_pop(L, 1);
+    if (res) {
       sess->incr_pos(1);
       ++pos;
       return true;
-    });
-    std::string resp;
-    if (auto status = sess->inst()->model().Tokenizer()->Decode(output, &resp); !status.ok()) {
-      throw status;
+    } else {
+      return false;
     }
-    lua_pushlstring(L, resp.data(), resp.size());
-    return 1;
-  } catch (const sentencepiece::util::Status& status) {
-    lua_pushnil(L);
-    lua_pushstring(L, status.ToString().c_str());
-    return 2;
+  });
+  lua_pushboolean(L, 1);
+  return 1;
+}
+
+int normal_mode(lua_State* L, cgemma::session* sess, const char* text) {
+  auto prompt = text2prompt(sess, text);
+  std::vector<int> output;
+  size_t pos = 0;
+  generate(sess, prompt, [&](int token, float) {
+    if (pos >= prompt.size() && token != gcpp::EOS_ID) {
+      output.push_back(token);
+    }
+    sess->incr_pos(1);
+    ++pos;
+    return true;
+  });
+  std::string resp;
+  if (!sess->inst()->model().Tokenizer()->Decode(output, &resp)) {
+    throw std::runtime_error("Tokenizer decoding failed. (normal_mode)");
   }
+  lua_pushlstring(L, resp.data(), resp.size());
+  return 1;
 }
 
 int call(lua_State* L) {
