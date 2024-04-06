@@ -15,7 +15,7 @@ std::vector<int> text2prompt(cgemma::session* sess, const char* text) {
   constexpr const char model_sot[] = "<start_of_turn>model\n";
   constexpr const char eot[] = "<end_of_turn>\n";
   std::string s;
-  if (sess->inst()->model().model_training == gcpp::ModelTraining::GEMMA_IT) {
+  if (sess->inst()->args().ModelTraining() == gcpp::ModelTraining::GEMMA_IT) {
     s.reserve(sizeof(eot) - 1
             + sizeof(user_sot) - 1
             + std::strlen(text)
