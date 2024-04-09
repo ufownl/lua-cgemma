@@ -37,7 +37,7 @@ sudo make install
 local gemma, err = require("cgemma").new({
   tokenizer = "/path/to/tokenizer.spm",
   model = "2b-it",
-  compressed_weights = "/path/to/2b-it-sfp.sbs"
+  weights = "/path/to/2b-it-sfp.sbs"
 })
 if not gemma then
   print("Opoos! ", err)
@@ -91,16 +91,15 @@ Available options:
 ```lua
 {
   tokenizer = "/path/to/tokenizer.spm",  -- Path of tokenizer model file. (required)
-  model = "2b-it",  -- Model type - can be 2b-it (2B parameters, instruction-tuned),
-                    -- 2b-pt (2B parameters, pretrained), 7b-it (7B parameters,
-                    -- instruction-tuned), or 7b-pt (7B parameters, pretrained).
+  model = "2b-it",  -- Model type:
+                    -- 2b-it (2B parameters, instruction-tuned),
+                    -- 2b-pt (2B parameters, pretrained),
+                    -- 7b-it (7B parameters, instruction-tuned),
+                    -- 7b-pt (7B parameters, pretrained).
                     -- (required)
-  compressed_weights = "/path/to/2b-it-sfp.sbs",  -- Path of compressed weights file. (required)
-  weights = "/path/to/weights.sbs",  -- Path of uncompressed weights file. Only required if
-                                     -- compressed weights file is not present and needs
-                                     -- to be regenerated.
-  scheduler = sched_inst,  -- Instance of scheduler, if not provided a default scheduler
-                           -- will be attached.
+  weights = "/path/to/2b-it-sfp.sbs",  -- Path of model weights file. (required)
+  scheduler = sched_inst,  -- Instance of scheduler, if not provided a default
+                           -- scheduler will be attached.
 }
 ```
 
@@ -113,6 +112,25 @@ Create a scheduler instance.
 A successful call returns a scheduler instance. Otherwise, it returns `nil` and a string describing the error.
 
 The only parameter `num_threads` indicates the number of threads in the internal thread pool. If not provided or `num_threads <= 0`, it will create a default scheduler with the number of threads depending on the concurrent threads supported by the implementation.
+
+#### cgemma.compress_MODEL_weights
+
+model | syntax
+------|-------
+`2b` | `<boolean>ok, <string>err = cgemma.compress_2b_weights(<string>weights, <string>compressed_weights[, <cgemma.scheduler>sched])`
+`7b` | `<boolean>ok, <string>err = cgemma.compress_7b_weights(<string>weights, <string>compressed_weights[, <cgemma.scheduler>sched])`
+
+Generate compressed weights from uncompressed weights.
+
+A successful call returns `true`. Otherwise, it returns `false` and a string describing the error.
+
+Parameters:
+
+name | description | required
+-----|-------------|---------
+weights | Path of uncompressed weights file. | Yes
+compressed_weights | Output path of compressed weights file. | Yes
+sched | Instance of scheduler, if not provided a default scheduler will be attached. | No
 
 #### cgemma.instance.session
 

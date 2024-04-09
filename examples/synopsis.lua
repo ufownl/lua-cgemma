@@ -2,7 +2,7 @@
 local gemma, err = require("cgemma").new({
   tokenizer = "tokenizer.spm",
   model = "2b-it",
-  compressed_weights = "2b-it-sfp.sbs"
+  weights = "2b-it-sfp.sbs"
 })
 if not gemma then
   print("Opoos! ", err)
