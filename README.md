@@ -95,7 +95,9 @@ Available options:
                     -- 2b-it (2B parameters, instruction-tuned),
                     -- 2b-pt (2B parameters, pretrained),
                     -- 7b-it (7B parameters, instruction-tuned),
-                    -- 7b-pt (7B parameters, pretrained).
+                    -- 7b-pt (7B parameters, pretrained),
+                    -- gr2b-it (griffin 2B parameters, instruction-tuned),
+                    -- gr2b-pt (griffin 2B parameters, pretrained).
                     -- (required)
   weights = "/path/to/2b-it-sfp.sbs",  -- Path of model weights file. (required)
   scheduler = sched_inst,  -- Instance of scheduler, if not provided a default
@@ -119,6 +121,7 @@ model | syntax
 ------|-------
 `2b` | `<boolean>ok, <string>err = cgemma.compress_2b_weights(<string>weights, <string>compressed_weights[, <cgemma.scheduler>sched])`
 `7b` | `<boolean>ok, <string>err = cgemma.compress_7b_weights(<string>weights, <string>compressed_weights[, <cgemma.scheduler>sched])`
+`gr2b` | `<boolean>ok, <string>err = cgemma.compress_gr2b_weights(<string>weights, <string>compressed_weights[, <cgemma.scheduler>sched])`
 
 Generate compressed weights from uncompressed weights.
 

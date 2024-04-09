@@ -34,6 +34,7 @@ int luaopen_cgemma(lua_State* L) {
     {"scheduler", cgemma::scheduler::create},
     {"compress_2b_weights", compress_weights<gcpp::Model::GEMMA_2B>},
     {"compress_7b_weights", compress_weights<gcpp::Model::GEMMA_7B>},
+    {"compress_gr2b_weights", compress_weights<gcpp::Model::GRIFFIN_2B>},
     {nullptr, nullptr}
   };
   cgemma::instance::declare(L);
