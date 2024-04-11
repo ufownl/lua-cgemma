@@ -1,0 +1,51 @@
+name: build
+
+on:
+  push:
+    branches: [ "stable", "main", "workflows" ]
+  pull_request:
+    branches: [ "stable", "main" ]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        build_type: [Release]
+        compiler: [{c: gcc, cxx: g++}, {c: clang, cxx: clang++}]
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        repository: LuaJIT/LuaJIT
+        path: LuaJIT
+
+    - name: Build and install LuaJIT
+      working-directory: ${{ github.workspace }}/LuaJIT
+      run: |
+        export MACOSX_DEPLOYMENT_TARGET=14.4
+        make CC=${{ matrix.compiler.c }} && sudo make install
+
+    - uses: actions/checkout@v4
+      with:
+        path: lua-cgemma
+
+    - name: Configure CMake
+      run: >
+        cmake -B ${{ github.workspace }}/lua-cgemma/build
+        -DCMAKE_CXX_COMPILER=${{ matrix.compiler.cxx }}
+        -DCMAKE_C_COMPILER=${{ matrix.compiler.c }}
+        -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+        -S ${{ github.workspace }}/lua-cgemma
+
+    - name: Build and install lua-cgemma
+      working-directory: ${{ github.workspace }}/lua-cgemma/build
+      run: make && sudo make install
+
+    - name: Test
+      shell: bash
+      run: luajit -e 'print(require("cgemma")._NAME)'
