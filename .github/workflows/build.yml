@@ -28,7 +28,7 @@ jobs:
       working-directory: ${{ github.workspace }}/LuaJIT
       run: |
         export MACOSX_DEPLOYMENT_TARGET=14.4
-        make CC=${{ matrix.compiler.c }} && sudo make install
+        make CC=${{ matrix.compiler.c }} -j4 && sudo make install
 
     - uses: actions/checkout@v4
       with:
@@ -44,7 +44,7 @@ jobs:
 
     - name: Build and install lua-cgemma
       working-directory: ${{ github.workspace }}/lua-cgemma/build
-      run: make && sudo make install
+      run: make -j4 && sudo make install
 
     - name: Test
       shell: bash
