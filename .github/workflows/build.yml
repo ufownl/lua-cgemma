@@ -48,4 +48,4 @@ jobs:
 
     - name: Test
       shell: bash
-      run: luajit -e 'print(require("cgemma")._NAME)'
+      run: luajit -e 'require("cgemma").info()'

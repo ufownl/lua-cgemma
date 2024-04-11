@@ -78,6 +78,12 @@ end
 
 ### APIs for Lua
 
+#### cgemma.info
+
+**syntax:** `cgemma.info()`
+
+Show information of cgemma module.
+
 #### cgemma.new
 
 **syntax:** `<cgemma.instance>inst, <string>err = cgemma.new(<table>options)`
