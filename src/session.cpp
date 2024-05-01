@@ -139,8 +139,7 @@ int reset(lua_State* L) {
 }
 
 enum class kv_cache_field: size_t {
-  key_cache,
-  value_cache,
+  kv_cache,
   conv1d_cache,
   rglru_cache,
   end
@@ -150,8 +149,7 @@ class kv_cache_size_store {
 public:
   template <class Config>
   kv_cache_size_store(const Config&, size_t pos) {
-    store_[static_cast<size_t>(kv_cache_field::key_cache)] = Config::kGemmaLayers * Config::kKVHeads * Config::kQKVDim * pos * sizeof(std::declval<gcpp::KVCache>().key_cache[0]);
-    store_[static_cast<size_t>(kv_cache_field::value_cache)] = Config::kGemmaLayers * Config::kKVHeads * Config::kQKVDim * pos * sizeof(std::declval<gcpp::KVCache>().value_cache[0]);
+    store_[static_cast<size_t>(kv_cache_field::kv_cache)] = Config::kGemmaLayers * Config::kKVHeads * Config::kQKVDim * 2 * pos * sizeof(std::declval<gcpp::KVCache>().kv_cache[0]);
     store_[static_cast<size_t>(kv_cache_field::conv1d_cache)] = Config::kGriffinLayers * std::max(Config::kConv1dWidth - 1, 0) * Config::kModelDim * sizeof(std::declval<gcpp::KVCache>().conv1d_cache[0]);
     store_[static_cast<size_t>(kv_cache_field::rglru_cache)] = Config::kGriffinLayers * Config::kModelDim * sizeof(std::declval<gcpp::KVCache>().rglru_cache[0]);
   }
@@ -197,8 +195,7 @@ size_t dump_impl(char* buf, const cgemma::session* sess) {
       buf += size.get<kv_cache_field::FIELD>();                                           \
     }                                                                                     \
   } while (false)
-    DUMP_CACHE(key_cache);
-    DUMP_CACHE(value_cache);
+    DUMP_CACHE(kv_cache);
     DUMP_CACHE(conv1d_cache);
     DUMP_CACHE(rglru_cache);
 #undef DUMP_CACHE
@@ -234,8 +231,7 @@ void load_impl(cgemma::session* sess, const char* buf, size_t n) {
       buf += size.get<kv_cache_field::FIELD>();                                           \
     }                                                                                     \
   } while (false)
-  LOAD_CACHE(key_cache);
-  LOAD_CACHE(value_cache);
+  LOAD_CACHE(kv_cache);
   LOAD_CACHE(conv1d_cache);
   LOAD_CACHE(rglru_cache);
 #undef LOAD_CACHE
