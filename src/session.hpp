@@ -20,8 +20,6 @@ public:
   size_t pos() const { return pos_; }
   const gcpp::KVCache& kv_cache() const { return kv_cache_; }
   gcpp::KVCache& kv_cache() { return kv_cache_; }
-  const gcpp::TimingInfo& timing_info() const { return timing_info_; }
-  gcpp::TimingInfo& timing_info() { return timing_info_; }
 
   void set_pos(size_t pos) { pos_ = pos; }
   void incr_pos(size_t n) { pos_ += n; }
@@ -36,7 +34,6 @@ private:
   gcpp::InferenceArgs args_;
   size_t pos_ {0};
   gcpp::KVCache kv_cache_;
-  gcpp::TimingInfo timing_info_;
 };
 
 }

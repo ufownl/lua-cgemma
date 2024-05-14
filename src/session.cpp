@@ -46,6 +46,7 @@ std::vector<int> text2prompt(cgemma::session* sess, const char* text) {
 }
 
 void generate(cgemma::session* sess, std::vector<int>& prompt, const gcpp::StreamFunc& stream_token) {
+  gcpp::TimingInfo timing_info;
   gcpp::GenerateGemma(sess->inst()->model(), {
     .max_tokens = sess->args().max_tokens,
     .max_generated_tokens = sess->args().max_generated_tokens,
@@ -54,7 +55,7 @@ void generate(cgemma::session* sess, std::vector<int>& prompt, const gcpp::Strea
     .gen = &sess->rnd(),
     .stream_token = stream_token,
     .accept_token = [](int) { return true; }
-  }, prompt, sess->pos(), sess->kv_cache(), sess->inst()->sched().pool(), sess->timing_info());
+  }, prompt, sess->pos(), sess->kv_cache(), sess->inst()->sched().pool(), timing_info);
 }
 
 int stream_mode(lua_State* L, cgemma::session* sess, const char* text) {
