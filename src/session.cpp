@@ -50,8 +50,11 @@ void generate(cgemma::session* sess, std::vector<int>& prompt, const gcpp::Strea
     .max_tokens = sess->args().max_tokens,
     .max_generated_tokens = sess->args().max_generated_tokens,
     .temperature = sess->args().temperature,
-    .verbosity = 0
-  }, prompt, sess->pos(), sess->kv_cache(), sess->inst()->sched().pool(), stream_token, sess->rnd());
+    .verbosity = 0,
+    .gen = &sess->rnd(),
+    .stream_token = stream_token,
+    .accept_token = [](int) { return true; }
+  }, prompt, sess->pos(), sess->kv_cache(), sess->inst()->sched().pool(), sess->timing_info());
 }
 
 int stream_mode(lua_State* L, cgemma::session* sess, const char* text) {
