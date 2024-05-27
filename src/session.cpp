@@ -3,7 +3,11 @@
 #include "scheduler.hpp"
 #include "utils/file_io.hpp"
 #include <stdexcept>
+#include <algorithm>
+#include <utility>
+#include <numeric>
 #include <vector>
+#include <array>
 #include <cstring>
 
 namespace {
@@ -42,12 +46,16 @@ std::vector<int> text2prompt(cgemma::session* sess, const char* text) {
 }
 
 void generate(cgemma::session* sess, std::vector<int>& prompt, const gcpp::StreamFunc& stream_token) {
+  gcpp::TimingInfo timing_info;
   gcpp::GenerateGemma(sess->inst()->model(), {
     .max_tokens = sess->args().max_tokens,
     .max_generated_tokens = sess->args().max_generated_tokens,
     .temperature = sess->args().temperature,
-    .verbosity = 0
-  }, prompt, sess->pos(), sess->kv_cache(), sess->inst()->sched().pool(), stream_token, sess->rnd());
+    .verbosity = 0,
+    .gen = &sess->rnd(),
+    .stream_token = stream_token,
+    .accept_token = [](int) { return true; }
+  }, prompt, sess->pos(), sess->kv_cache(), sess->inst()->sched().pool(), timing_info);
 }
 
 int stream_mode(lua_State* L, cgemma::session* sess, const char* text) {
@@ -134,36 +142,69 @@ int reset(lua_State* L) {
   return 0;
 }
 
-template <class Config>
-size_t kv_cache_size(size_t pos) {
-  return Config::kLayers * Config::kKVHeads * Config::kQKVDim * pos;
-}
+enum class kv_cache_field: size_t {
+  kv_cache,
+  conv1d_cache,
+  rglru_cache,
+  end
+};
 
-size_t kv_cache_size(gcpp::Model type, size_t pos) {
+class kv_cache_size_store {
+public:
+  template <class Config>
+  kv_cache_size_store(const Config&, size_t pos) {
+    store_[static_cast<size_t>(kv_cache_field::kv_cache)] = Config::kGemmaLayers * Config::kKVHeads * Config::kQKVDim * 2 * pos * sizeof(std::declval<gcpp::KVCache>().kv_cache[0]);
+    store_[static_cast<size_t>(kv_cache_field::conv1d_cache)] = Config::kGriffinLayers * std::max(Config::kConv1dWidth - 1, 0) * Config::kModelDim * sizeof(std::declval<gcpp::KVCache>().conv1d_cache[0]);
+    store_[static_cast<size_t>(kv_cache_field::rglru_cache)] = Config::kGriffinLayers * Config::kModelDim * sizeof(std::declval<gcpp::KVCache>().rglru_cache[0]);
+  }
+
+  template <kv_cache_field Field>
+  size_t get() const { return store_[static_cast<size_t>(Field)]; }
+
+  size_t total() const {
+    return std::accumulate(store_.begin() + 1, store_.end(), store_.front());
+  }
+
+private:
+  std::array<size_t, static_cast<size_t>(kv_cache_field::end)> store_;
+};
+
+kv_cache_size_store kv_cache_size(gcpp::Model type, size_t pos) {
   switch (type) {
     case gcpp::Model::GEMMA_2B:
-      return kv_cache_size<gcpp::ConfigGemma2B>(pos);
+      return kv_cache_size_store(gcpp::ConfigGemma2B(), pos);
     case gcpp::Model::GEMMA_7B:
-      return kv_cache_size<gcpp::ConfigGemma7B>(pos);
+      return kv_cache_size_store(gcpp::ConfigGemma7B(), pos);
+    case gcpp::Model::GRIFFIN_2B:
+      return kv_cache_size_store(gcpp::ConfigGriffin2B(), pos);
     default:
       throw std::invalid_argument("Invalid model type.");
   }
 }
 
 size_t dump_impl(char* buf, const cgemma::session* sess) {
-  auto typ = sess->inst()->args().ModelType();
-  auto len = kv_cache_size(typ, sess->pos()) * sizeof(sess->kv_cache().key_cache[0]);
+  auto type = sess->inst()->args().ModelType();
+  auto size = kv_cache_size(type, sess->pos());
   uint16_t pos = sess->pos();
   if (buf) {
     std::memcpy(buf, name, sizeof(name) - 1);
-    buf[sizeof(name) - 1] = static_cast<char>(typ);
-    std::memcpy(buf + sizeof(name), &pos, sizeof(pos));
-    if (len > 0) {
-      std::memcpy(buf + sizeof(name) + sizeof(pos), sess->kv_cache().key_cache.get(), len);
-      std::memcpy(buf + sizeof(name) + sizeof(pos) + len, sess->kv_cache().value_cache.get(), len);
-    }
+    buf[sizeof(name) - 1] = static_cast<char>(type);
+    buf += sizeof(name);
+    std::memcpy(buf, &pos, sizeof(pos));
+    buf += sizeof(pos);
+#define DUMP_CACHE(FIELD)                                                                 \
+  do {                                                                                    \
+    if (size.get<kv_cache_field::FIELD>() > 0) {                                          \
+      std::memcpy(buf, sess->kv_cache().FIELD.get(), size.get<kv_cache_field::FIELD>());  \
+      buf += size.get<kv_cache_field::FIELD>();                                           \
+    }                                                                                     \
+  } while (false)
+    DUMP_CACHE(kv_cache);
+    DUMP_CACHE(conv1d_cache);
+    DUMP_CACHE(rglru_cache);
+#undef DUMP_CACHE
   }
-  return sizeof(name) + sizeof(pos) + 2 * len;
+  return sizeof(name) + sizeof(pos) + size.total();
 }
 
 void load_impl(cgemma::session* sess, const char* buf, size_t n) {
@@ -175,20 +216,29 @@ void load_impl(cgemma::session* sess, const char* buf, size_t n) {
       throw std::invalid_argument("Invalid dump format: magic mismatch");
     }
   }
-  auto typ = static_cast<gcpp::Model>(buf[sizeof(name) - 1]);
-  if (typ != sess->inst()->args().ModelType()) {
+  auto type = static_cast<gcpp::Model>(buf[sizeof(name) - 1]);
+  if (type != sess->inst()->args().ModelType()) {
     throw std::invalid_argument("Invalid dump format: model type mismatch");
   }
-  size_t pos = *reinterpret_cast<const uint16_t*>(buf + sizeof(name));
-  auto len = kv_cache_size(typ, pos) * sizeof(sess->kv_cache().key_cache[0]);
-  if (n != sizeof(name) + sizeof(uint16_t) + 2 * len) {
+  buf += sizeof(name);
+  size_t pos = *reinterpret_cast<const uint16_t*>(buf);
+  buf += sizeof(uint16_t);
+  auto size = kv_cache_size(type, pos);
+  if (n != sizeof(name) + sizeof(uint16_t) + size.total()) {
     throw std::invalid_argument("Invalid dump format: KVCache length mismatch");
   }
   sess->set_pos(pos);
-  if (len > 0) {
-    std::memcpy(sess->kv_cache().key_cache.get(), buf + sizeof(name) + sizeof(uint16_t), len);
-    std::memcpy(sess->kv_cache().value_cache.get(), buf + sizeof(name) + sizeof(uint16_t) + len, len);
-  }
+#define LOAD_CACHE(FIELD)                                                                 \
+  do {                                                                                    \
+    if (size.get<kv_cache_field::FIELD>() > 0) {                                          \
+      std::memcpy(sess->kv_cache().FIELD.get(), buf, size.get<kv_cache_field::FIELD>());  \
+      buf += size.get<kv_cache_field::FIELD>();                                           \
+    }                                                                                     \
+  } while (false)
+  LOAD_CACHE(kv_cache);
+  LOAD_CACHE(conv1d_cache);
+  LOAD_CACHE(rglru_cache);
+#undef LOAD_CACHE
 }
 
 int dumps(lua_State* L) {

@@ -1,4 +1,5 @@
 find_package(LuaJIT REQUIRED)
+get_filename_component(LUA_LIBRARY_DIR ${LUA_LIBRARY} PATH)
 
 aux_source_directory(. SOURCES)
 aux_source_directory(utils UTILS_SOURCES)
@@ -7,14 +8,11 @@ target_include_directories(cgemma PRIVATE ${LUA_INCLUDE_DIR})
 target_include_directories(cgemma PRIVATE ${gemma_SOURCE_DIR})
 target_include_directories(cgemma PRIVATE ${sentencepiece_SOURCE_DIR})
 target_link_libraries(cgemma PRIVATE ${LUA_LIBRARIES} libgemma)
-set_target_properties(cgemma PROPERTIES PREFIX "" SUFFIX ".so")
+set_target_properties(cgemma PROPERTIES
+  PREFIX ""
+  SUFFIX ".so"
+  INSTALL_RPATH ${LUA_LIBRARY_DIR}
+)
 
-get_filename_component(LUA_LIBRARY_DIR ${LUA_LIBRARY} PATH)
 set(LUA_MODULE_DIR "${LUA_LIBRARY_DIR}/lua/5.1")
 install(TARGETS cgemma DESTINATION ${LUA_MODULE_DIR})
-if(APPLE OR WIN32)
-  install(TARGETS sentencepiece DESTINATION ${LUA_LIBRARY_DIR})
-else()
-  install(TARGETS sentencepiece DESTINATION "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}")
-  install(CODE "execute_process(COMMAND ldconfig)")
-endif()

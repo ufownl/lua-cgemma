@@ -2,7 +2,7 @@
 #define CGEMMA_INSTANCE_HPP
 
 #include <lua.hpp>
-#include <gemma.h>
+#include <gemma/gemma.h>
 #include <util/app.h>
 #include <memory>
 
