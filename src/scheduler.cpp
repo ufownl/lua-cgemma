@@ -71,7 +71,7 @@ int scheduler::create(lua_State* L) {
 
 void scheduler::pin_threads() {
   if (pool_.NumWorkers() > 10) {
-    pool_.Run(0, pool_.NumWorkers(), [](uint64_t, size_t thread) { gcpp::PinThreadToCore(thread); });
+    gcpp::PinWorkersToCores(pool_);
   }
 }
 
