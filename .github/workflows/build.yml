@@ -48,4 +48,6 @@ jobs:
 
     - name: Test
       shell: bash
-      run: luajit -e 'require("cgemma").info()'
+      run: |
+        luajit -e 'require("cgemma").info()'
+        gemma.compress_weights --help
