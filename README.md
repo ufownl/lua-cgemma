@@ -121,26 +121,6 @@ A successful call returns a scheduler instance. Otherwise, it returns `nil` and 
 
 The only parameter `num_threads` indicates the number of threads in the internal thread pool. If not provided or `num_threads <= 0`, it will create a default scheduler with the number of threads depending on the concurrent threads supported by the implementation.
 
-#### cgemma.compress_MODEL_weights
-
-model | syntax
-------|-------
-`2b` | `<boolean>ok, <string>err = cgemma.compress_2b_weights(<string>weights, <string>compressed_weights[, <cgemma.scheduler>sched])`
-`7b` | `<boolean>ok, <string>err = cgemma.compress_7b_weights(<string>weights, <string>compressed_weights[, <cgemma.scheduler>sched])`
-`gr2b` | `<boolean>ok, <string>err = cgemma.compress_gr2b_weights(<string>weights, <string>compressed_weights[, <cgemma.scheduler>sched])`
-
-Generate compressed weights from uncompressed weights.
-
-A successful call returns `true`. Otherwise, it returns `false` and a string describing the error.
-
-Parameters:
-
-name | description | required
------|-------------|---------
-weights | Path of uncompressed weights file. | Yes
-compressed_weights | Output path of compressed weights file. | Yes
-sched | Instance of scheduler, if not provided a default scheduler will be attached. | No
-
 #### cgemma.instance.session
 
 **syntax:** `<cgemma.session>sess, <number or string>seed = inst:session([<table>options])`

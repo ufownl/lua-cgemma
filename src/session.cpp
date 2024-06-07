@@ -36,7 +36,7 @@ std::vector<int> text2prompt(cgemma::session* sess, const char* text) {
     s.append(text, std::strlen(text));
   }
   std::vector<int> prompt;
-  if (!sess->inst()->model().Tokenizer()->Encode(s, &prompt)) {
+  if (!sess->inst()->model().Tokenizer().Encode(s, &prompt)) {
     throw std::runtime_error("Tokenizer encoding failed. (text2prompt)");
   }
   if (sess->pos() == 0) {
@@ -47,7 +47,7 @@ std::vector<int> text2prompt(cgemma::session* sess, const char* text) {
 
 void generate(cgemma::session* sess, std::vector<int>& prompt, const gcpp::StreamFunc& stream_token) {
   gcpp::TimingInfo timing_info;
-  gcpp::GenerateGemma(sess->inst()->model(), {
+  sess->inst()->model().Generate({
     .max_tokens = sess->args().max_tokens,
     .max_generated_tokens = sess->args().max_generated_tokens,
     .temperature = sess->args().temperature,
@@ -55,7 +55,7 @@ void generate(cgemma::session* sess, std::vector<int>& prompt, const gcpp::Strea
     .gen = &sess->rnd(),
     .stream_token = stream_token,
     .accept_token = [](int) { return true; }
-  }, prompt, sess->pos(), sess->kv_cache(), sess->inst()->sched().pool(), timing_info);
+  }, prompt, sess->pos(), sess->kv_cache(), timing_info);
 }
 
 int stream_mode(lua_State* L, cgemma::session* sess, const char* text) {
@@ -65,7 +65,7 @@ int stream_mode(lua_State* L, cgemma::session* sess, const char* text) {
     lua_pushvalue(L, 3);
     if (pos >= prompt.size() && token != gcpp::EOS_ID) {
       std::string token_text;
-      if (!sess->inst()->model().Tokenizer()->Decode(std::vector<int>{token}, &token_text)) {
+      if (!sess->inst()->model().Tokenizer().Decode(std::vector<int>{token}, &token_text)) {
         throw std::runtime_error("Tokenizer decoding failed. (stream_mode)");
       }
       lua_pushlstring(L, token_text.data(), token_text.size());
@@ -102,7 +102,7 @@ int normal_mode(lua_State* L, cgemma::session* sess, const char* text) {
     return true;
   });
   std::string resp;
-  if (!sess->inst()->model().Tokenizer()->Decode(output, &resp)) {
+  if (!sess->inst()->model().Tokenizer().Decode(output, &resp)) {
     throw std::runtime_error("Tokenizer decoding failed. (normal_mode)");
   }
   lua_pushlstring(L, resp.data(), resp.size());
@@ -308,7 +308,7 @@ session::session(const instance* inst, unsigned int seed, int argc, char* argv[]
   : inst_(inst)
   , rnd_(seed)
   , args_(argc, argv)
-  , kv_cache_(gcpp::CreateKVCache(inst->args().ModelType())) {
+  , kv_cache_(gcpp::KVCache::Create(inst->args().ModelType())) {
   if (auto err = args_.Validate()) {
     throw std::invalid_argument(err);
   }
