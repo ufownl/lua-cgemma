@@ -40,7 +40,7 @@ std::vector<int> text2prompt(cgemma::session* sess, const char* text) {
     throw std::runtime_error("Tokenizer encoding failed. (text2prompt)");
   }
   if (sess->pos() == 0) {
-    prompt.insert(prompt.cbegin(), 2);
+    prompt.insert(prompt.cbegin(), gcpp::BOS_ID);
   }
   return prompt;
 }
