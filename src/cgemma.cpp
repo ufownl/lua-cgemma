@@ -26,8 +26,6 @@ int info(lua_State* L) {
     << "Date & Time                                : " << std::put_time(std::localtime(&now), "%F %T") << std::endl
     << "Max Sequence Length                        : " << gcpp::kSeqLen << std::endl
     << "Top-K                                      : " << gcpp::kTopK << std::endl
-    << "Weight Type                                : " << gcpp::TypeName(gcpp::GemmaWeightT()) << std::endl
-    << "Embedder Input Type                        : " << gcpp::TypeName(gcpp::EmbedderInputT()) << std::endl
     << "Prefill Token Batch Size                   : " << gcpp::kPrefillBatchSize << std::endl
     << "Hardware Concurrency                       : " << std::thread::hardware_concurrency() << std::endl
     << "Instruction Set                            : " << hwy::TargetName(hwy::DispatchedTarget()) << " (" << hwy::VectorBytes() * 8 << " bits)" << std::endl

@@ -106,6 +106,10 @@ Available options:
                     -- gr2b-pt (griffin 2B parameters, pretrained).
                     -- (required)
   weights = "/path/to/2b-it-sfp.sbs",  -- Path of model weights file. (required)
+  weight_type = "sfp",  -- Weight type:
+                        -- sfp (8-bit FP, default)
+                        -- f32 (float)
+                        -- bf16 (bfloat16)
   scheduler = sched_inst,  -- Instance of scheduler, if not provided a default
                            -- scheduler will be attached.
 }
