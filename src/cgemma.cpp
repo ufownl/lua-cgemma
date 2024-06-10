@@ -2,6 +2,7 @@
 #include "instance.hpp"
 #include "session.hpp"
 #include "scheduler.hpp"
+#include <hwy/timer.h>
 #include <hwy/per_target.h>
 #include <hwy/targets.h>
 #include <iostream>
@@ -20,17 +21,20 @@ constexpr const char* banner = R""(
 )"";
 
 int info(lua_State* L) {
+  std::cout << banner << std::endl;
   auto now = std::time(nullptr);
-  std::cout
-    << banner << std::endl
-    << "Date & Time                                : " << std::put_time(std::localtime(&now), "%F %T") << std::endl
-    << "Max Sequence Length                        : " << gcpp::kSeqLen << std::endl
-    << "Top-K                                      : " << gcpp::kTopK << std::endl
-    << "Prefill Token Batch Size                   : " << gcpp::kPrefillBatchSize << std::endl
-    << "Hardware Concurrency                       : " << std::thread::hardware_concurrency() << std::endl
-    << "Instruction Set                            : " << hwy::TargetName(hwy::DispatchedTarget()) << " (" << hwy::VectorBytes() * 8 << " bits)" << std::endl
-    << "Compiled Config                            : " << gcpp::CompiledConfig() << std::endl
-    << std::endl;
+  std::cout << "Date & Time                                : " << std::put_time(std::localtime(&now), "%F %T") << std::endl;
+  std::cout << "Max Sequence Length                        : " << gcpp::kSeqLen << std::endl;
+  std::cout << "Top-K                                      : " << gcpp::kTopK << std::endl;
+  std::cout << "Prefill Token Batch Size                   : " << gcpp::kPrefillBatchSize << std::endl;
+  char cpu[100];
+  if (hwy::platform::GetCpuString(cpu)) {
+    std::cout << "CPU                                        : " << cpu << std::endl;
+  }
+  std::cout << "Instruction Set                            : " << hwy::TargetName(hwy::DispatchedTarget()) << " (" << hwy::VectorBytes() * 8 << " bits)" << std::endl;
+  std::cout << "Hardware Concurrency                       : " << std::thread::hardware_concurrency() << std::endl;
+  std::cout << "Compiled Config                            : " << gcpp::CompiledConfig() << std::endl;
+  std::cout << std::endl;
   return 0;
 }
 
