@@ -23,17 +23,17 @@ constexpr const char* banner = R""(
 int info(lua_State* L) {
   std::cout << banner << std::endl;
   auto now = std::time(nullptr);
-  std::cout << "Date & Time                                : " << std::put_time(std::localtime(&now), "%F %T") << std::endl;
-  std::cout << "Max Sequence Length                        : " << gcpp::kSeqLen << std::endl;
-  std::cout << "Top-K                                      : " << gcpp::kTopK << std::endl;
-  std::cout << "Prefill Token Batch Size                   : " << gcpp::kPrefillBatchSize << std::endl;
+  std::cout << "Date & Time              : " << std::put_time(std::localtime(&now), "%F %T") << std::endl;
+  std::cout << "Max Sequence Length      : " << gcpp::kSeqLen << std::endl;
+  std::cout << "Top-K                    : " << gcpp::kTopK << std::endl;
+  std::cout << "Prefill Token Batch Size : " << gcpp::kPrefillBatchSize << std::endl;
   char cpu[100];
   if (hwy::platform::GetCpuString(cpu)) {
-    std::cout << "CPU                                        : " << cpu << std::endl;
+    std::cout << "CPU                      : " << cpu << std::endl;
   }
-  std::cout << "Instruction Set                            : " << hwy::TargetName(hwy::DispatchedTarget()) << " (" << hwy::VectorBytes() * 8 << " bits)" << std::endl;
-  std::cout << "Hardware Concurrency                       : " << std::thread::hardware_concurrency() << std::endl;
-  std::cout << "Compiled Config                            : " << gcpp::CompiledConfig() << std::endl;
+  std::cout << "Instruction Set          : " << hwy::TargetName(hwy::DispatchedTarget()) << " (" << hwy::VectorBytes() * 8 << " bits)" << std::endl;
+  std::cout << "Hardware Concurrency     : " << std::thread::hardware_concurrency() << std::endl;
+  std::cout << "Compiled Config          : " << gcpp::CompiledConfig() << std::endl;
   std::cout << std::endl;
   return 0;
 }
