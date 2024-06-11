@@ -125,6 +125,12 @@ A successful call returns a scheduler instance. Otherwise, it returns `nil` and 
 
 The only parameter `num_threads` indicates the number of threads in the internal thread pool. If not provided or `num_threads <= 0`, it will create a default scheduler with the number of threads depending on the concurrent threads supported by the implementation.
 
+#### cgemma.scheduler.pin_threads
+
+**syntax:** `sched:pin_threads()`
+
+Pin the scheduler's threads to logical processors.
+
 #### cgemma.instance.session
 
 **syntax:** `<cgemma.session>sess, <number or string>seed = inst:session([<table>options])`

@@ -6,6 +6,11 @@ namespace {
 
 constexpr const char name[] = "cgemma.scheduler";
 
+int pin_threads(lua_State* L) {
+  gcpp::PinWorkersToCores(cgemma::scheduler::check(L, 1)->pool());
+  return 0;
+}
+
 int destroy(lua_State* L) {
   cgemma::scheduler::check(L, 1)->~scheduler();
   return 0;
@@ -17,7 +22,7 @@ namespace cgemma {
 
 scheduler::scheduler()
   : pool_(std::thread::hardware_concurrency()) {
-  pin_threads();
+  // nop
 }
 
 void scheduler::declare(lua_State* L) {
@@ -26,6 +31,7 @@ void scheduler::declare(lua_State* L) {
     {nullptr, nullptr}
   };
   constexpr const luaL_Reg methods[] = {
+    {"pin_threads", pin_threads},
     {nullptr, nullptr}
   };
   luaL_newmetatable(L, name);
@@ -66,12 +72,6 @@ int scheduler::create(lua_State* L) {
     lua_pushnil(L);
     lua_pushstring(L, e.what());
     return 2;
-  }
-}
-
-void scheduler::pin_threads() {
-  if (pool_.NumWorkers() > 10) {
-    gcpp::PinWorkersToCores(pool_);
   }
 }
 
