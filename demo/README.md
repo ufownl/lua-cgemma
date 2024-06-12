@@ -1,5 +1,7 @@
 # Online demo of lua-cgemma
 
+[![demo-hf-space](https://github.com/ufownl/lua-cgemma/assets/9405195/8c71920d-fb0d-43da-b396-89a5140adbee)](https://huggingface.co/spaces/RangerUFO/lua-cgemma-demo)
+
 This demo requires [OpenResty](https://openresty.org/) to run, see [here](https://openresty.org/en/installation.html) to learn how to install it.
 
 ## Usage
@@ -19,18 +21,3 @@ This demo requires [OpenResty](https://openresty.org/) to run, see [here](https:
 *[OpenResty](https://openresty.org/)'s core is [NGINX](https://nginx.org/), so the commands are extremely similar to [NGINX](https://nginx.org/).*
 
 **4th step:** Open [http://localhost:8042](http://localhost:8042) with your browser, and then you can chat with [Gemma](https://ai.google.dev/gemma).
-
-<table>
-  <thead>
-    <tr>
-      <th>Snapshot</th>
-      <th>Video</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td><img src="https://github.com/ufownl/lua-cgemma/assets/9405195/65064d4e-8064-4c55-92d4-52ca7ad01198"></td>
-      <td><video src="https://github.com/ufownl/lua-cgemma/assets/9405195/053d674a-a7b0-4e76-8832-c2c43bc63c1e"></td>
-    </tr>
-  </tbody>
-</table>
