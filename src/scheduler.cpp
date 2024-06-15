@@ -1,5 +1,6 @@
 #include "scheduler.hpp"
 #include <util/app.h>
+#include <algorithm>
 #include <thread>
 
 namespace {
@@ -21,7 +22,12 @@ int destroy(lua_State* L) {
 namespace cgemma {
 
 scheduler::scheduler()
-  : pool_(std::thread::hardware_concurrency()) {
+  : pool_(std::min(static_cast<size_t>(std::thread::hardware_concurrency()), gcpp::kMaxThreads)) {
+  // nop
+}
+
+scheduler::scheduler(size_t num_threads)
+  : pool_(std::min(num_threads, gcpp::kMaxThreads)) {
   // nop
 }
 

@@ -9,7 +9,7 @@ namespace cgemma {
 class scheduler {
 public:
   scheduler();
-  explicit scheduler(size_t num_threads) : pool_(num_threads) {}
+  explicit scheduler(size_t num_threads);
 
   hwy::ThreadPool& pool() { return pool_; }
 
