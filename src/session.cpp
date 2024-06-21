@@ -152,7 +152,8 @@ class kv_cache_size_store {
 public:
   template <class Config>
   kv_cache_size_store(const Config&, size_t pos) {
-    store_[static_cast<size_t>(kv_cache_field::kv_cache)] = Config::kGemmaLayers * Config::kKVHeads * Config::kQKVDim * 2 * pos * sizeof(std::declval<gcpp::KVCache>().kv_cache[0]);
+    gcpp::CachePosSize<Config> pos_size;
+    store_[static_cast<size_t>(kv_cache_field::kv_cache)] = pos_size() * pos * sizeof(std::declval<gcpp::KVCache>().kv_cache[0]);
     store_[static_cast<size_t>(kv_cache_field::conv1d_cache)] = Config::kGriffinLayers * std::max(Config::kConv1dWidth - 1, 0) * Config::kModelDim * sizeof(std::declval<gcpp::KVCache>().conv1d_cache[0]);
     store_[static_cast<size_t>(kv_cache_field::rglru_cache)] = Config::kGriffinLayers * Config::kModelDim * sizeof(std::declval<gcpp::KVCache>().rglru_cache[0]);
   }
