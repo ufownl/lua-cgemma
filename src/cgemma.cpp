@@ -2,7 +2,7 @@
 #include "instance.hpp"
 #include "session.hpp"
 #include "scheduler.hpp"
-#include <compression/compress.h>
+#include <hwy/timer.h>
 #include <hwy/per_target.h>
 #include <hwy/targets.h>
 #include <iostream>
@@ -21,41 +21,21 @@ constexpr const char* banner = R""(
 )"";
 
 int info(lua_State* L) {
+  std::cout << banner << std::endl;
   auto now = std::time(nullptr);
-  std::cout
-    << banner << std::endl
-    << "Date & Time                                : " << std::put_time(std::localtime(&now), "%F %T") << std::endl
-    << "Max Sequence Length                        : " << gcpp::kSeqLen << std::endl
-    << "Top-K                                      : " << gcpp::kTopK << std::endl
-    << "Weight Type                                : " << gcpp::TypeName(gcpp::GemmaWeightT()) << std::endl
-    << "Embedder Input Type                        : " << gcpp::TypeName(gcpp::EmbedderInputT()) << std::endl
-    << "Prefill Token Batch Size                   : " << gcpp::kPrefillBatchSize << std::endl
-    << "Hardware Concurrency                       : " << std::thread::hardware_concurrency() << std::endl
-    << "Instruction Set                            : " << hwy::TargetName(hwy::DispatchedTarget()) << " (" << hwy::VectorBytes() * 8 << " bits)" << std::endl
-    << "Compiled Config                            : " << gcpp::CompiledConfig() << std::endl
-    << std::endl;
-  return 0;
-}
-
-template <gcpp::Model MODEL_T>
-int compress_weights(lua_State* L) {
-  auto w = luaL_checkstring(L, 1);
-  auto cw = luaL_checkstring(L, 2);
-  auto s = cgemma::scheduler::to(L, 3);
-  try {
-    std::unique_ptr<cgemma::scheduler> default_sched;
-    if (!s) {
-      default_sched = std::make_unique<cgemma::scheduler>();
-      s = default_sched.get();
-    }
-    CompressWeights(MODEL_T, gcpp::Path(w), gcpp::Path(cw), s->pool());
-    lua_pushboolean(L, 1);
-    return 1;
-  } catch (const std::exception& e) {
-    lua_pushboolean(L, 0);
-    lua_pushstring(L, e.what());
-    return 2;
+  std::cout << "Date & Time              : " << std::put_time(std::localtime(&now), "%F %T") << std::endl;
+  std::cout << "Max Sequence Length      : " << gcpp::kSeqLen << std::endl;
+  std::cout << "Top-K                    : " << gcpp::kTopK << std::endl;
+  std::cout << "Prefill Token Batch Size : " << gcpp::kPrefillBatchSize << std::endl;
+  char cpu[100];
+  if (hwy::platform::GetCpuString(cpu)) {
+    std::cout << "CPU                      : " << cpu << std::endl;
   }
+  std::cout << "Instruction Set          : " << hwy::TargetName(hwy::DispatchedTarget()) << " (" << hwy::VectorBytes() * 8 << " bits)" << std::endl;
+  std::cout << "Hardware Concurrency     : " << std::thread::hardware_concurrency() << std::endl;
+  std::cout << "Compiled Config          : " << gcpp::CompiledConfig() << std::endl;
+  std::cout << std::endl;
+  return 0;
 }
 
 }
@@ -65,9 +45,6 @@ int luaopen_cgemma(lua_State* L) {
     {"info", info},
     {"new", cgemma::instance::create},
     {"scheduler", cgemma::scheduler::create},
-    {"compress_2b_weights", compress_weights<gcpp::Model::GEMMA_2B>},
-    {"compress_7b_weights", compress_weights<gcpp::Model::GEMMA_7B>},
-    {"compress_gr2b_weights", compress_weights<gcpp::Model::GRIFFIN_2B>},
     {nullptr, nullptr}
   };
   cgemma::instance::declare(L);

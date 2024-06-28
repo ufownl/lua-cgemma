@@ -46,6 +46,10 @@ jobs:
       working-directory: ${{ github.workspace }}/lua-cgemma/build
       run: make -j4 && sudo make install
 
-    - name: Test
+    - name: Test cgemma module
       shell: bash
       run: luajit -e 'require("cgemma").info()'
+
+    - name: Test gemma.compress_weights
+      shell: bash
+      run: gemma.compress_weights --help

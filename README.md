@@ -102,10 +102,18 @@ Available options:
                     -- 2b-pt (2B parameters, pretrained),
                     -- 7b-it (7B parameters, instruction-tuned),
                     -- 7b-pt (7B parameters, pretrained),
+                    -- 9b-it (9B parameters, instruction-tuned),
+                    -- 9b-pt (9B parameters, pretrained),
+                    -- 27b-it (27B parameters, instruction-tuned),
+                    -- 27b-pt (27B parameters, pretrained),
                     -- gr2b-it (griffin 2B parameters, instruction-tuned),
                     -- gr2b-pt (griffin 2B parameters, pretrained).
                     -- (required)
   weights = "/path/to/2b-it-sfp.sbs",  -- Path of model weights file. (required)
+  weight_type = "sfp",  -- Weight type:
+                        -- sfp (8-bit FP, default)
+                        -- f32 (float)
+                        -- bf16 (bfloat16)
   scheduler = sched_inst,  -- Instance of scheduler, if not provided a default
                            -- scheduler will be attached.
 }
@@ -121,25 +129,11 @@ A successful call returns a scheduler instance. Otherwise, it returns `nil` and 
 
 The only parameter `num_threads` indicates the number of threads in the internal thread pool. If not provided or `num_threads <= 0`, it will create a default scheduler with the number of threads depending on the concurrent threads supported by the implementation.
 
-#### cgemma.compress_MODEL_weights
+#### cgemma.scheduler.pin_threads
 
-model | syntax
-------|-------
-`2b` | `<boolean>ok, <string>err = cgemma.compress_2b_weights(<string>weights, <string>compressed_weights[, <cgemma.scheduler>sched])`
-`7b` | `<boolean>ok, <string>err = cgemma.compress_7b_weights(<string>weights, <string>compressed_weights[, <cgemma.scheduler>sched])`
-`gr2b` | `<boolean>ok, <string>err = cgemma.compress_gr2b_weights(<string>weights, <string>compressed_weights[, <cgemma.scheduler>sched])`
+**syntax:** `sched:pin_threads()`
 
-Generate compressed weights from uncompressed weights.
-
-A successful call returns `true`. Otherwise, it returns `false` and a string describing the error.
-
-Parameters:
-
-name | description | required
------|-------------|---------
-weights | Path of uncompressed weights file. | Yes
-compressed_weights | Output path of compressed weights file. | Yes
-sched | Instance of scheduler, if not provided a default scheduler will be attached. | No
+Pin the scheduler's threads to logical processors.
 
 #### cgemma.instance.session
 

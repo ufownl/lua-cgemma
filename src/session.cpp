@@ -19,7 +19,7 @@ std::vector<int> text2prompt(cgemma::session* sess, const char* text) {
   constexpr const char model_sot[] = "<start_of_turn>model\n";
   constexpr const char eot[] = "<end_of_turn>\n";
   std::string s;
-  if (sess->inst()->args().ModelTraining() == gcpp::ModelTraining::GEMMA_IT) {
+  if (sess->inst()->args().ModelTrainingType() == gcpp::ModelTraining::GEMMA_IT) {
     s.reserve(sizeof(eot) - 1
             + sizeof(user_sot) - 1
             + std::strlen(text)
@@ -36,26 +36,25 @@ std::vector<int> text2prompt(cgemma::session* sess, const char* text) {
     s.append(text, std::strlen(text));
   }
   std::vector<int> prompt;
-  if (!sess->inst()->model().Tokenizer()->Encode(s, &prompt)) {
+  if (!sess->inst()->model().Tokenizer().Encode(s, &prompt)) {
     throw std::runtime_error("Tokenizer encoding failed. (text2prompt)");
   }
   if (sess->pos() == 0) {
-    prompt.insert(prompt.cbegin(), 2);
+    prompt.insert(prompt.cbegin(), gcpp::BOS_ID);
   }
   return prompt;
 }
 
 void generate(cgemma::session* sess, std::vector<int>& prompt, const gcpp::StreamFunc& stream_token) {
   gcpp::TimingInfo timing_info;
-  gcpp::GenerateGemma(sess->inst()->model(), {
+  sess->inst()->model().Generate({
     .max_tokens = sess->args().max_tokens,
     .max_generated_tokens = sess->args().max_generated_tokens,
     .temperature = sess->args().temperature,
     .verbosity = 0,
     .gen = &sess->rnd(),
-    .stream_token = stream_token,
-    .accept_token = [](int) { return true; }
-  }, prompt, sess->pos(), sess->kv_cache(), sess->inst()->sched().pool(), timing_info);
+    .stream_token = stream_token
+  }, prompt, sess->pos(), sess->kv_cache(), timing_info);
 }
 
 int stream_mode(lua_State* L, cgemma::session* sess, const char* text) {
@@ -65,7 +64,7 @@ int stream_mode(lua_State* L, cgemma::session* sess, const char* text) {
     lua_pushvalue(L, 3);
     if (pos >= prompt.size() && token != gcpp::EOS_ID) {
       std::string token_text;
-      if (!sess->inst()->model().Tokenizer()->Decode(std::vector<int>{token}, &token_text)) {
+      if (!sess->inst()->model().Tokenizer().Decode(std::vector<int>{token}, &token_text)) {
         throw std::runtime_error("Tokenizer decoding failed. (stream_mode)");
       }
       lua_pushlstring(L, token_text.data(), token_text.size());
@@ -102,7 +101,7 @@ int normal_mode(lua_State* L, cgemma::session* sess, const char* text) {
     return true;
   });
   std::string resp;
-  if (!sess->inst()->model().Tokenizer()->Decode(output, &resp)) {
+  if (!sess->inst()->model().Tokenizer().Decode(output, &resp)) {
     throw std::runtime_error("Tokenizer decoding failed. (normal_mode)");
   }
   lua_pushlstring(L, resp.data(), resp.size());
@@ -153,7 +152,8 @@ class kv_cache_size_store {
 public:
   template <class Config>
   kv_cache_size_store(const Config&, size_t pos) {
-    store_[static_cast<size_t>(kv_cache_field::kv_cache)] = Config::kGemmaLayers * Config::kKVHeads * Config::kQKVDim * 2 * pos * sizeof(std::declval<gcpp::KVCache>().kv_cache[0]);
+    gcpp::CachePosSize<Config> pos_size;
+    store_[static_cast<size_t>(kv_cache_field::kv_cache)] = pos_size() * pos * sizeof(std::declval<gcpp::KVCache>().kv_cache[0]);
     store_[static_cast<size_t>(kv_cache_field::conv1d_cache)] = Config::kGriffinLayers * std::max(Config::kConv1dWidth - 1, 0) * Config::kModelDim * sizeof(std::declval<gcpp::KVCache>().conv1d_cache[0]);
     store_[static_cast<size_t>(kv_cache_field::rglru_cache)] = Config::kGriffinLayers * Config::kModelDim * sizeof(std::declval<gcpp::KVCache>().rglru_cache[0]);
   }
@@ -169,22 +169,16 @@ private:
   std::array<size_t, static_cast<size_t>(kv_cache_field::end)> store_;
 };
 
-kv_cache_size_store kv_cache_size(gcpp::Model type, size_t pos) {
-  switch (type) {
-    case gcpp::Model::GEMMA_2B:
-      return kv_cache_size_store(gcpp::ConfigGemma2B(), pos);
-    case gcpp::Model::GEMMA_7B:
-      return kv_cache_size_store(gcpp::ConfigGemma7B(), pos);
-    case gcpp::Model::GRIFFIN_2B:
-      return kv_cache_size_store(gcpp::ConfigGriffin2B(), pos);
-    default:
-      throw std::invalid_argument("Invalid model type.");
+template <class Config>
+struct kv_cache_size {
+  kv_cache_size_store operator()(size_t pos) {
+    return kv_cache_size_store(Config(), pos);
   }
-}
+};
 
 size_t dump_impl(char* buf, const cgemma::session* sess) {
   auto type = sess->inst()->args().ModelType();
-  auto size = kv_cache_size(type, sess->pos());
+  auto size = gcpp::CallForModel<void, kv_cache_size>(type, sess->pos());
   uint16_t pos = sess->pos();
   if (buf) {
     std::memcpy(buf, name, sizeof(name) - 1);
@@ -223,7 +217,7 @@ void load_impl(cgemma::session* sess, const char* buf, size_t n) {
   buf += sizeof(name);
   size_t pos = *reinterpret_cast<const uint16_t*>(buf);
   buf += sizeof(uint16_t);
-  auto size = kv_cache_size(type, pos);
+  auto size = gcpp::CallForModel<void, kv_cache_size>(type, pos);
   if (n != sizeof(name) + sizeof(uint16_t) + size.total()) {
     throw std::invalid_argument("Invalid dump format: KVCache length mismatch");
   }
@@ -308,7 +302,7 @@ session::session(const instance* inst, unsigned int seed, int argc, char* argv[]
   : inst_(inst)
   , rnd_(seed)
   , args_(argc, argv)
-  , kv_cache_(gcpp::CreateKVCache(inst->args().ModelType())) {
+  , kv_cache_(gcpp::KVCache::Create(inst->args().ModelType())) {
   if (auto err = args_.Validate()) {
     throw std::invalid_argument(err);
   }

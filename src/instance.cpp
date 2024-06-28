@@ -26,7 +26,7 @@ instance::instance(int argc, char* argv[], scheduler* s)
     default_sched_ = std::make_unique<scheduler>();
     sched_ = default_sched_.get();
   }
-  model_ = std::make_unique<gcpp::Gemma>(args_.tokenizer, args_.weights, args_.ModelType(), sched_->pool());
+  model_ = std::make_unique<gcpp::Gemma>(args_.tokenizer, args_.weights, args_.ModelType(), args_.WeightType(), sched_->pool());
 }
 
 void instance::declare(lua_State* L) {
@@ -61,7 +61,9 @@ int instance::create(lua_State* L) {
   lua_pop(L, 1);
   constexpr const char* required_options[] = {"--tokenizer", "--model", "--weights"};
   constexpr const int n = sizeof(required_options) / sizeof(required_options[0]);
-  char* argv[n * 2 + 1] = {const_cast<char*>("lua-cgemma")};
+  constexpr const char* optional_options[] = {"--weight_type"};
+  constexpr const int m = sizeof(optional_options) / sizeof(optional_options[0]);
+  char* argv[(n + m) * 2 + 1] = {const_cast<char*>("lua-cgemma")};
   for (int i = 0; i < n; ++i) {
     auto k = required_options[i] + 2;
     lua_getfield(L, 1, k);
@@ -73,9 +75,20 @@ int instance::create(lua_State* L) {
     argv[i * 2 + 2] = const_cast<char*>(v);
     lua_pop(L, 1);
   }
+  auto argc = n * 2 + 1;
+  for (auto opt: optional_options) {
+    auto k = opt + 2;
+    lua_getfield(L, 1, k);
+    auto v = lua_tostring(L, -1);
+    if (v) {
+      argv[argc++] = const_cast<char*>(opt);
+      argv[argc++] = const_cast<char*>(v);
+    }
+    lua_pop(L, 1);
+  }
   auto ud = lua_newuserdata(L, sizeof(instance));
   try {
-    new(ud) instance(n * 2 + 1, argv, s);
+    new(ud) instance(argc, argv, s);
     luaL_getmetatable(L, name);
     lua_setmetatable(L, -2);
     return 1;

@@ -9,7 +9,7 @@ namespace cgemma {
 class scheduler {
 public:
   scheduler();
-  explicit scheduler(size_t num_threads) : pool_(num_threads) { pin_threads(); };
+  explicit scheduler(size_t num_threads);
 
   hwy::ThreadPool& pool() { return pool_; }
 
@@ -19,8 +19,6 @@ public:
   static int create(lua_State* L);
 
 private:
-  void pin_threads();
-
   hwy::ThreadPool pool_;
 };
 
