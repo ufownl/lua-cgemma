@@ -1,5 +1,5 @@
 local args = require("argparse").parse(arg)
-if args["help"] then
+if args.help then
   require("argparse").help(
     "AI function demo.",
     "resty ai_function.lua [options]"
@@ -9,10 +9,10 @@ end
 
 -- Create a Gemma instance
 local gemma, err = require("cgemma").new({
-  tokenizer = args["tokenizer"] or "tokenizer.spm",
-  model = args["model"] or "2b-it",
-  weights = args["weights"] or "2b-it-sfp.sbs",
-  weight_type = args["weight_type"]
+  tokenizer = args.tokenizer or "tokenizer.spm",
+  model = args.model or "2b-it",
+  weights = args.weights or "2b-it-sfp.sbs",
+  weight_type = args.weight_type
 })
 if not gemma then
   print("Opoos! ", err)
