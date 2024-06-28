@@ -13,6 +13,7 @@
 namespace {
 
 constexpr const char name[] = "cgemma.session";
+constexpr const int gemma_eot_id = 107;
 
 std::vector<int> text2prompt(cgemma::session* sess, const char* text) {
   constexpr const char user_sot[] = "<start_of_turn>user\n";
@@ -61,13 +62,19 @@ int stream_mode(lua_State* L, cgemma::session* sess, const char* text) {
   auto prompt = text2prompt(sess, text);
   size_t pos = 0;
   generate(sess, prompt, [&](int token, float) {
+    auto eot = false;
     lua_pushvalue(L, 3);
     if (pos >= prompt.size() && token != gcpp::EOS_ID) {
-      std::string token_text;
-      if (!sess->inst()->model().Tokenizer().Decode(std::vector<int>{token}, &token_text)) {
-        throw std::runtime_error("Tokenizer decoding failed. (stream_mode)");
+      if (sess->inst()->args().ModelTrainingType() == gcpp::ModelTraining::GEMMA_IT && token == gemma_eot_id) {
+        eot = true;
+        lua_pushnil(L);
+      } else {
+        std::string token_text;
+        if (!sess->inst()->model().Tokenizer().Decode(std::vector<int>{token}, &token_text)) {
+          throw std::runtime_error("Tokenizer decoding failed. (stream_mode)");
+        }
+        lua_pushlstring(L, token_text.data(), token_text.size());
       }
-      lua_pushlstring(L, token_text.data(), token_text.size());
     } else {
       lua_pushnil(L);
     }
@@ -76,7 +83,7 @@ int stream_mode(lua_State* L, cgemma::session* sess, const char* text) {
     lua_call(L, 3, 1);
     auto res = lua_toboolean(L, -1);
     lua_pop(L, 1);
-    if (res) {
+    if (!eot && res) {
       sess->incr_pos(1);
       ++pos;
       return true;
@@ -94,6 +101,9 @@ int normal_mode(lua_State* L, cgemma::session* sess, const char* text) {
   size_t pos = 0;
   generate(sess, prompt, [&](int token, float) {
     if (pos >= prompt.size() && token != gcpp::EOS_ID) {
+      if (sess->inst()->args().ModelTrainingType() == gcpp::ModelTraining::GEMMA_IT && token == gemma_eot_id) {
+        return false;
+      }
       output.push_back(token);
     }
     sess->incr_pos(1);
