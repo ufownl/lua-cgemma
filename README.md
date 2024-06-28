@@ -102,6 +102,10 @@ Available options:
                     -- 2b-pt (2B parameters, pretrained),
                     -- 7b-it (7B parameters, instruction-tuned),
                     -- 7b-pt (7B parameters, pretrained),
+                    -- 9b-it (9B parameters, instruction-tuned),
+                    -- 9b-pt (9B parameters, pretrained),
+                    -- 27b-it (27B parameters, instruction-tuned),
+                    -- 27b-pt (27B parameters, pretrained),
                     -- gr2b-it (griffin 2B parameters, instruction-tuned),
                     -- gr2b-pt (griffin 2B parameters, pretrained).
                     -- (required)
