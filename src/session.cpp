@@ -20,7 +20,7 @@ std::vector<int> text2prompt(cgemma::session* sess, const char* text) {
   constexpr const char model_sot[] = "<start_of_turn>model\n";
   constexpr const char eot[] = "<end_of_turn>\n";
   std::string s;
-  if (sess->inst()->args().ModelTrainingType() == gcpp::ModelTraining::GEMMA_IT) {
+  if (sess->inst()->model().Info().training == gcpp::ModelTraining::GEMMA_IT) {
     s.reserve(sizeof(eot) - 1
             + sizeof(user_sot) - 1
             + std::strlen(text)
@@ -65,7 +65,7 @@ int stream_mode(lua_State* L, cgemma::session* sess, const char* text) {
     auto eot = false;
     lua_pushvalue(L, 3);
     if (pos >= prompt.size() && token != gcpp::EOS_ID) {
-      if (sess->inst()->args().ModelTrainingType() == gcpp::ModelTraining::GEMMA_IT && token == gemma_eot_id) {
+      if (sess->inst()->model().Info().training == gcpp::ModelTraining::GEMMA_IT && token == gemma_eot_id) {
         eot = true;
         lua_pushnil(L);
       } else {
@@ -101,7 +101,7 @@ int normal_mode(lua_State* L, cgemma::session* sess, const char* text) {
   size_t pos = 0;
   generate(sess, prompt, [&](int token, float) {
     if (pos >= prompt.size() && token != gcpp::EOS_ID) {
-      if (sess->inst()->args().ModelTrainingType() == gcpp::ModelTraining::GEMMA_IT && token == gemma_eot_id) {
+      if (sess->inst()->model().Info().training == gcpp::ModelTraining::GEMMA_IT && token == gemma_eot_id) {
         return false;
       }
       output.push_back(token);
@@ -187,7 +187,7 @@ struct kv_cache_size {
 };
 
 size_t dump_impl(char* buf, const cgemma::session* sess) {
-  auto type = sess->inst()->args().ModelType();
+  auto type = sess->inst()->model().Info().model;
   auto size = gcpp::CallForModel<void, kv_cache_size>(type, sess->pos());
   uint16_t pos = sess->pos();
   if (buf) {
@@ -221,7 +221,7 @@ void load_impl(cgemma::session* sess, const char* buf, size_t n) {
     }
   }
   auto type = static_cast<gcpp::Model>(buf[sizeof(name) - 1]);
-  if (type != sess->inst()->args().ModelType()) {
+  if (type != sess->inst()->model().Info().model) {
     throw std::invalid_argument("Invalid dump format: model type mismatch");
   }
   buf += sizeof(name);
@@ -312,7 +312,7 @@ session::session(const instance* inst, unsigned int seed, int argc, char* argv[]
   : inst_(inst)
   , rnd_(seed)
   , args_(argc, argv)
-  , kv_cache_(gcpp::KVCache::Create(inst->args().ModelType())) {
+  , kv_cache_(gcpp::KVCache::Create(inst->model().Info().model)) {
   if (auto err = args_.Validate()) {
     throw std::invalid_argument(err);
   }
