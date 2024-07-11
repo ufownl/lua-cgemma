@@ -1,8 +1,8 @@
 local args = require("argparse").parse(arg)
 if args.help then
   require("argparse").help(
-    "Stream mode chatbot demo.",
-    "resty stream_mode.lua [options]"
+    "Normal mode chatbot demo.",
+    "resty normal_mode.lua [options]"
   )
   print("  --kv_cache: Path of KV cache file.")
   return
@@ -58,28 +58,12 @@ while true do
       print("Done")
       return
     end
-    local ok, err = session(text, function(token, pos, prompt_size)
-      if pos < prompt_size then
-        -- Gemma is processing the prompt
-        io.write(pos == 0 and "reading and thinking ." or ".")
-      elseif token then
-        -- Stream the token text output by Gemma here
-        if pos == prompt_size then
-          io.write("\nreply: ")
-        end
-        io.write(token)
-      else
-        -- Gemma's output reaches the end
-        print()
-      end
-      io.flush()
-      -- return `true` indicates success; return `false` indicates failure and terminates the generation
-      return true
-    end)
-    if not ok then
+    local reply, err = session(text)
+    if not reply then
       print("Opoos! ", err)
       return
     end
+    print("reply: ", reply)
   end
 
   print("Exceed the maximum number of tokens")

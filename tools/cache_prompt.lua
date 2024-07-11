@@ -9,7 +9,7 @@ for i, v in ipairs(arg) do
     end
   end
 end
-if args["help"] then
+if args.help then
   require("cgemma").info()
   print()
   print("Store prompt's KV cache in a file.")
@@ -37,7 +37,7 @@ if args["help"] then
 end
 
 -- Create a scheduler instance
-local sched, err = require("cgemma").scheduler(tonumber(args["num_threads"]))
+local sched, err = require("cgemma").scheduler(tonumber(args.num_threads))
 if not sched then
   print("Opoos! ", err)
   return
@@ -46,10 +46,10 @@ end
 print("Loading model ...")
 -- Create a Gemma instance
 local gemma, err = require("cgemma").new({
-  tokenizer = args["tokenizer"] or "tokenizer.spm",
-  model = args["model"] or "2b-pt",
-  weights = args["weights"] or "2b-it-sfp.sbs",
-  weight_type = args["weight_type"],
+  tokenizer = args.tokenizer or "tokenizer.spm",
+  model = args.model or "2b-pt",
+  weights = args.weights or "2b-it-sfp.sbs",
+  weight_type = args.weight_type,
   scheduler = sched
 })
 if not gemma then
@@ -84,9 +84,9 @@ end
 print()
 
 -- Dump the current session to "dump.bin"
-local ok, err = session:dump(args["output"] or "dump.bin")
+local ok, err = session:dump(args.output or "dump.bin")
 if not ok then
   print("Opoos! ", err)
   return
 end
-print(string.format("Done! Session states of the prompt have been dumped to \"%s\"", args["output"] or "dump.bin"))
+print(string.format("Done! Session states of the prompt have been dumped to \"%s\"", args.output or "dump.bin"))
