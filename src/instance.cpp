@@ -12,6 +12,22 @@ int destroy(lua_State* L) {
   return 0;
 }
 
+int disabled_tokens(lua_State* L) {
+  auto inst = cgemma::instance::check(L, 1);
+  lua_newtable(L);
+  size_t index = 0;
+  for (auto token: inst->disabled_tokens()) {
+    std::string token_text;
+    if (!inst->model().Tokenizer().Decode(std::vector<int>{token}, &token_text)) {
+      throw std::runtime_error("Tokenizer decoding failed. (disabled_tokens)");
+    }
+    lua_pushinteger(L, ++index);
+    lua_pushlstring(L, token_text.data(), token_text.size());
+    lua_settable(L, -3);
+  }
+  return 1;
+}
+
 }
 
 namespace cgemma {
@@ -35,6 +51,7 @@ void instance::declare(lua_State* L) {
     {nullptr, nullptr}
   };
   constexpr const luaL_Reg methods[] = {
+    {"disabled_tokens", ::disabled_tokens},
     {"session", session::create},
     {nullptr, nullptr}
   };

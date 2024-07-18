@@ -136,6 +136,12 @@ The only parameter `num_threads` indicates the number of threads in the internal
 
 Pin the scheduler's threads to logical processors.
 
+#### cgemma.instance.disabled_tokens
+
+**syntax:** `<table>tokens = inst:disabled_tokens`
+
+Query the disabled tokens of a Gemma instance.
+
 #### cgemma.instance.session
 
 **syntax:** `<cgemma.session>sess, <number or string>seed = inst:session([<table>options])`
