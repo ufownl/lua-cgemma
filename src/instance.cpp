@@ -56,9 +56,6 @@ instance* instance::check(lua_State* L, int index) {
 
 int instance::create(lua_State* L) {
   luaL_checktype(L, 1, LUA_TTABLE);
-  lua_getfield(L, 1, "scheduler");
-  auto s = scheduler::to(L, -1);
-  lua_pop(L, 1);
   constexpr const char* required_options[] = {"--tokenizer", "--model", "--weights"};
   constexpr const int n = sizeof(required_options) / sizeof(required_options[0]);
   constexpr const char* optional_options[] = {"--weight_type"};
@@ -86,9 +83,30 @@ int instance::create(lua_State* L) {
     }
     lua_pop(L, 1);
   }
+  lua_getfield(L, 1, "scheduler");
+  auto s = scheduler::to(L, -1);
+  lua_pop(L, 1);
   auto ud = lua_newuserdata(L, sizeof(instance));
   try {
-    new(ud) instance(argc, argv, s);
+    auto inst = new(ud) instance(argc, argv, s);
+    lua_getfield(L, 1, "disabled_words");
+    if (lua_istable(L, -1)) {
+      lua_pushnil(L);
+      while (lua_next(L, -2)) {
+        auto word = lua_tostring(L, -1);
+        if (word) {
+          std::vector<int> tokens;
+          if (!inst->model_->Tokenizer().Encode(word, &tokens)) {
+            throw std::runtime_error("Tokenizer encoding failed. (instance::create)");
+          }
+          for (auto t: tokens) {
+            inst->disabled_tokens_.insert(t);
+          }
+        }
+        lua_pop(L, 1);
+      }
+    }
+    lua_pop(L, 1);
     luaL_getmetatable(L, name);
     lua_setmetatable(L, -2);
     return 1;

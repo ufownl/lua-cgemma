@@ -116,6 +116,7 @@ Available options:
                         -- bf16 (bfloat16)
   scheduler = sched_inst,  -- Instance of scheduler, if not provided a default
                            -- scheduler will be attached.
+  disabled_words = {...},  -- Words you don't want to generate.
 }
 ```
 

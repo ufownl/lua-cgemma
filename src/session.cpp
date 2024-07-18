@@ -54,7 +54,10 @@ void generate(cgemma::session* sess, std::vector<int>& prompt, const gcpp::Strea
     .temperature = sess->args().temperature,
     .verbosity = 0,
     .gen = &sess->rnd(),
-    .stream_token = stream_token
+    .stream_token = stream_token,
+    .accept_token = [&](int token, float) {
+      return sess->inst()->disabled_tokens().find(token) == sess->inst()->disabled_tokens().end();
+    }
   }, prompt, sess->pos(), sess->kv_cache(), timing_info);
 }
 
