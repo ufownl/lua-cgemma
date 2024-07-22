@@ -138,7 +138,7 @@ Pin the scheduler's threads to logical processors.
 
 #### cgemma.instance.disabled_tokens
 
-**syntax:** `<table>tokens = inst:disabled_tokens`
+**syntax:** `<table>tokens = inst:disabled_tokens()`
 
 Query the disabled tokens of a Gemma instance.
 
