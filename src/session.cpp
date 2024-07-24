@@ -47,7 +47,6 @@ std::vector<int> text2prompt(cgemma::session* sess, const char* text) {
 }
 
 void generate(cgemma::session* sess, std::vector<int>& prompt, const gcpp::StreamFunc& stream_token) {
-  gcpp::TimingInfo timing_info;
   sess->inst()->model().Generate({
     .max_tokens = sess->args().max_tokens,
     .max_generated_tokens = sess->args().max_generated_tokens,
@@ -58,7 +57,7 @@ void generate(cgemma::session* sess, std::vector<int>& prompt, const gcpp::Strea
     .accept_token = [&](int token, float) {
       return sess->inst()->disabled_tokens().find(token) == sess->inst()->disabled_tokens().end();
     }
-  }, prompt, sess->pos(), sess->kv_cache(), timing_info);
+  }, prompt, sess->pos(), sess->kv_cache(), sess->timing_info());
 }
 
 int stream_mode(lua_State* L, cgemma::session* sess, const char* text) {
@@ -307,6 +306,20 @@ int load(lua_State* L) {
   }
 }
 
+int stats(lua_State* L) {
+  auto ud = cgemma::session::check(L, 1);
+  lua_newtable(L);
+  lua_pushnumber(L, ud->timing_info().prefill_tok_sec);
+  lua_setfield(L, -2, "prefill_tokens_per_second");
+  lua_pushnumber(L, ud->timing_info().gen_tok_sec);
+  lua_setfield(L, -2, "generate_tokens_per_second");
+  lua_pushnumber(L, ud->timing_info().time_to_first_token);
+  lua_setfield(L, -2, "time_to_first_token");
+  lua_pushinteger(L, ud->timing_info().tokens_generated);
+  lua_setfield(L, -2, "tokens_generated");
+  return 1;
+}
+
 }
 
 namespace cgemma {
@@ -334,6 +347,7 @@ void session::declare(lua_State* L) {
     {"loads", loads},
     {"dump", dump},
     {"load", load},
+    {"stats", stats},
     {nullptr, nullptr}
   };
   luaL_newmetatable(L, name);

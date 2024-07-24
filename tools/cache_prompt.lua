@@ -33,6 +33,7 @@ if args.help then
   print("  --weights: Path of model weights file. (default: 2b-it-sfp.sbs)")
   print("  --weight_type: Weight type (default: sfp)")
   print("  --output: Path of output file. (default: dump.bin)")
+  print("  --stats: Print statistics at end.")
   return
 end
 
@@ -90,3 +91,9 @@ if not ok then
   return
 end
 print(string.format("Done! Session states of the prompt have been dumped to \"%s\"", args.output or "dump.bin"))
+if args.stats then
+  print("\n\nStatistics:\n")
+  for k, v in pairs(session:stats()) do
+    print("  "..k.." = "..v)
+  end
+end

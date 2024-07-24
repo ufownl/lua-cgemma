@@ -5,6 +5,7 @@ if args.help then
     "resty stream_mode.lua [options]"
   )
   print("  --kv_cache: Path of KV cache file.")
+  print("  --stats: Print statistics at end of turn.")
   return
 end
 
@@ -79,6 +80,13 @@ while true do
     if not ok then
       print("Opoos! ", err)
       return
+    end
+
+    if args.stats then
+      print("\n\nStatistics:\n")
+      for k, v in pairs(session:stats()) do
+        print("  "..k.." = "..v)
+      end
     end
   end
 

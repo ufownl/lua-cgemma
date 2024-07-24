@@ -205,6 +205,23 @@ Load the state data from the given file to restore a previous session.
 
 A successful call returns `true`. Otherwise, it returns `false` and a string describing the error.
 
+#### cgemma.session.stats
+
+**syntax:** `<table>statistics = sess:stats()`
+
+Get statistics for the current session.
+
+Example of statistics:
+
+```lua
+{
+  prefill_tokens_per_second = 34.950446398036,
+  generate_tokens_per_second = 9.0089134969039,
+  time_to_first_token = 0.8253711364232,
+  tokens_generated = 85
+}
+```
+
 #### metatable(cgemma.session).__call
 
 **syntax:** `<string or boolean>reply, <string>err = sess(<string>text[, <function>stream])`
