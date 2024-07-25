@@ -8,14 +8,13 @@
 #include <numeric>
 #include <vector>
 #include <array>
-#include <cstring>
 
 namespace {
 
 constexpr const char name[] = "cgemma.session";
 constexpr const int gemma_eot_id = 107;
 
-std::vector<int> text2prompt(cgemma::session* sess, const char* text) {
+std::vector<int> text2prompt(cgemma::session* sess, const char* text, size_t len) {
   constexpr const char user_sot[] = "<start_of_turn>user\n";
   constexpr const char model_sot[] = "<start_of_turn>model\n";
   constexpr const char eot[] = "<end_of_turn>\n";
@@ -23,18 +22,18 @@ std::vector<int> text2prompt(cgemma::session* sess, const char* text) {
   if (sess->inst()->model().Info().training == gcpp::ModelTraining::GEMMA_IT) {
     s.reserve(sizeof(eot) - 1
             + sizeof(user_sot) - 1
-            + std::strlen(text)
+            + len
             + sizeof(eot) - 1
             + sizeof(model_sot) - 1);
     if (sess->pos() > 0) {
-      s.append(eot);
+      s.append(eot, sizeof(eot) - 1);
     }
-    s.append(user_sot);
-    s.append(text);
-    s.append(eot);
-    s.append(model_sot);
+    s.append(user_sot, sizeof(user_sot) - 1);
+    s.append(text, len);
+    s.append(eot, sizeof(eot) - 1);
+    s.append(model_sot, sizeof(model_sot) - 1);
   } else {
-    s.append(text, std::strlen(text));
+    s.append(text, len);
   }
   std::vector<int> prompt;
   if (!sess->inst()->model().Tokenizer().Encode(s, &prompt)) {
@@ -46,7 +45,7 @@ std::vector<int> text2prompt(cgemma::session* sess, const char* text) {
   return prompt;
 }
 
-void generate(cgemma::session* sess, std::vector<int>& prompt, const gcpp::StreamFunc& stream_token) {
+void generate(cgemma::session* sess, const std::vector<int>& prompt, const gcpp::StreamFunc& stream_token) {
   gcpp::RuntimeConfig cfg;
   sess->args().CopyTo(cfg);
   cfg.verbosity = 0;
@@ -58,8 +57,7 @@ void generate(cgemma::session* sess, std::vector<int>& prompt, const gcpp::Strea
   sess->inst()->model().Generate(cfg, prompt, sess->pos(), sess->kv_cache(), sess->timing_info());
 }
 
-int stream_mode(lua_State* L, cgemma::session* sess, const char* text) {
-  auto prompt = text2prompt(sess, text);
+int stream_mode(lua_State* L, cgemma::session* sess, const std::vector<int>& prompt) {
   size_t pos = 0;
   generate(sess, prompt, [&](int token, float) {
     auto eot = false;
@@ -95,8 +93,7 @@ int stream_mode(lua_State* L, cgemma::session* sess, const char* text) {
   return 1;
 }
 
-int normal_mode(lua_State* L, cgemma::session* sess, const char* text) {
-  auto prompt = text2prompt(sess, text);
+int normal_mode(lua_State* L, cgemma::session* sess, const std::vector<int>& prompt) {
   std::vector<int> output;
   size_t pos = 0;
   generate(sess, prompt, [&](int token, float) {
@@ -126,8 +123,10 @@ int call(lua_State* L) {
     return 2;
   }
   try {
-    auto text = luaL_checkstring(L, 2);
-    return lua_isfunction(L, 3) ? stream_mode(L, sess, text) : normal_mode(L, sess, text);
+    size_t len;
+    auto text = luaL_checklstring(L, 2, &len);
+    auto prompt = text2prompt(sess, text, len);
+    return lua_isfunction(L, 3) ? stream_mode(L, sess, prompt) : normal_mode(L, sess, prompt);
   } catch (const std::exception& e) {
     lua_pushnil(L);
     lua_pushstring(L, e.what());
