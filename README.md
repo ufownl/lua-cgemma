@@ -156,6 +156,8 @@ Available options and default values:
 {
   max_tokens = 3072,  -- Maximum number of tokens in prompt + generation.
   max_generated_tokens = 2048,  -- Maximum number of tokens to generate.
+  prefill_tbatch = 64,  -- Prefill: max tokens per batch.
+  decode_qbatch = 16,  -- Decode: max queries per batch.
   temperature = 1.0,  -- Temperature for top-K.
   seed = 42,  -- Random seed. (default is random setting)
 }

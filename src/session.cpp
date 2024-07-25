@@ -47,17 +47,15 @@ std::vector<int> text2prompt(cgemma::session* sess, const char* text) {
 }
 
 void generate(cgemma::session* sess, std::vector<int>& prompt, const gcpp::StreamFunc& stream_token) {
-  sess->inst()->model().Generate({
-    .max_tokens = sess->args().max_tokens,
-    .max_generated_tokens = sess->args().max_generated_tokens,
-    .temperature = sess->args().temperature,
-    .verbosity = 0,
-    .gen = &sess->rnd(),
-    .stream_token = stream_token,
-    .accept_token = [&](int token, float) {
-      return sess->inst()->disabled_tokens().find(token) == sess->inst()->disabled_tokens().end();
-    }
-  }, prompt, sess->pos(), sess->kv_cache(), sess->timing_info());
+  gcpp::RuntimeConfig cfg;
+  sess->args().CopyTo(cfg);
+  cfg.verbosity = 0;
+  cfg.gen = &sess->rnd();
+  cfg.stream_token = stream_token;
+  cfg.accept_token = [&](int token, float) {
+    return sess->inst()->disabled_tokens().find(token) == sess->inst()->disabled_tokens().end();
+  };
+  sess->inst()->model().Generate(cfg, prompt, sess->pos(), sess->kv_cache(), sess->timing_info());
 }
 
 int stream_mode(lua_State* L, cgemma::session* sess, const char* text) {
@@ -327,11 +325,11 @@ namespace cgemma {
 session::session(const instance* inst, unsigned int seed, int argc, char* argv[])
   : inst_(inst)
   , rnd_(seed)
-  , args_(argc, argv)
-  , kv_cache_(gcpp::KVCache::Create(inst->model().Info().model)) {
+  , args_(argc, argv) {
   if (auto err = args_.Validate()) {
     throw std::invalid_argument(err);
   }
+  kv_cache_ = gcpp::KVCache::Create(inst->model().Info().model, args_.prefill_tbatch_size);
 }
 
 void session::declare(lua_State* L) {
@@ -372,7 +370,13 @@ int session::create(lua_State* L) {
   try {
     std::random_device rd;
     auto seed = rd();
-    constexpr const char* available_options[] = {"--max_tokens", "--max_generated_tokens", "--temperature"};
+    constexpr const char* available_options[] = {
+      "--max_tokens",
+      "--max_generated_tokens",
+      "--prefill_tbatch",
+      "--decode_qbatch",
+      "--temperature"
+    };
     constexpr const int n = sizeof(available_options) / sizeof(available_options[0]);
     int argc = 1;
     char* argv[n * 2 + 1] = {const_cast<char*>("lua-cgemma")};

@@ -32,6 +32,8 @@ if args.help then
   print("    gr2b-pt = griffin 2B parameters, pretrained")
   print("  --weights: Path of model weights file. (default: 2b-it-sfp.sbs)")
   print("  --weight_type: Weight type (default: sfp)")
+  print("  --max_tokens: Maximum number of tokens (default: 3072)")
+  print("  --prefill_tbatch: Maximum batch size during prefill phase (default: 64)")
   print("  --output: Path of output file. (default: dump.bin)")
   print("  --stats: Print statistics at end.")
   return
@@ -60,7 +62,9 @@ end
 
 -- Create a session
 local session, seed = gemma:session({
-  max_generated_tokens = 1
+  max_tokens = args.max_tokens,
+  max_generated_tokens = 1,
+  prefill_tbatch = args.prefill_tbatch
 })
 if not session then
   print("Opoos! ", seed)
