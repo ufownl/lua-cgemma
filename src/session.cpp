@@ -36,11 +36,13 @@ std::vector<int> text2prompt(cgemma::session* sess, const char* text, size_t len
     s.append(text, len);
   }
   std::vector<int> prompt;
+  const auto max_prompt_tokens = sess->args().max_tokens - sess->args().max_generated_tokens;
+  prompt.reserve(max_prompt_tokens > sess->pos() + 64 ? max_prompt_tokens - sess->pos() : 64);
   if (!sess->inst()->model().Tokenizer().Encode(s, &prompt)) {
     throw std::runtime_error("Tokenizer encoding failed. (text2prompt)");
   }
   if (sess->pos() == 0) {
-    prompt.insert(prompt.cbegin(), gcpp::BOS_ID);
+    prompt.emplace(prompt.cbegin(), gcpp::BOS_ID);
   }
   return prompt;
 }
