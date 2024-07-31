@@ -8,14 +8,13 @@
 #include <numeric>
 #include <vector>
 #include <array>
-#include <cstring>
 
 namespace {
 
 constexpr const char name[] = "cgemma.session";
 constexpr const int gemma_eot_id = 107;
 
-std::vector<int> text2prompt(cgemma::session* sess, const char* text) {
+std::vector<int> text2prompt(cgemma::session* sess, const char* text, size_t len) {
   constexpr const char user_sot[] = "<start_of_turn>user\n";
   constexpr const char model_sot[] = "<start_of_turn>model\n";
   constexpr const char eot[] = "<end_of_turn>\n";
@@ -23,43 +22,44 @@ std::vector<int> text2prompt(cgemma::session* sess, const char* text) {
   if (sess->inst()->model().Info().training == gcpp::ModelTraining::GEMMA_IT) {
     s.reserve(sizeof(eot) - 1
             + sizeof(user_sot) - 1
-            + std::strlen(text)
+            + len
             + sizeof(eot) - 1
             + sizeof(model_sot) - 1);
     if (sess->pos() > 0) {
-      s.append(eot);
+      s.append(eot, sizeof(eot) - 1);
     }
-    s.append(user_sot);
-    s.append(text);
-    s.append(eot);
-    s.append(model_sot);
+    s.append(user_sot, sizeof(user_sot) - 1);
+    s.append(text, len);
+    s.append(eot, sizeof(eot) - 1);
+    s.append(model_sot, sizeof(model_sot) - 1);
   } else {
-    s.append(text, std::strlen(text));
+    s.append(text, len);
   }
   std::vector<int> prompt;
+  const auto max_prompt_tokens = sess->args().max_tokens - sess->args().max_generated_tokens;
+  prompt.reserve(max_prompt_tokens > sess->pos() + 64 ? max_prompt_tokens - sess->pos() : 64);
   if (!sess->inst()->model().Tokenizer().Encode(s, &prompt)) {
     throw std::runtime_error("Tokenizer encoding failed. (text2prompt)");
   }
   if (sess->pos() == 0) {
-    prompt.insert(prompt.cbegin(), gcpp::BOS_ID);
+    prompt.emplace(prompt.cbegin(), gcpp::BOS_ID);
   }
   return prompt;
 }
 
-void generate(cgemma::session* sess, std::vector<int>& prompt, const gcpp::StreamFunc& stream_token) {
-  gcpp::TimingInfo timing_info;
-  sess->inst()->model().Generate({
-    .max_tokens = sess->args().max_tokens,
-    .max_generated_tokens = sess->args().max_generated_tokens,
-    .temperature = sess->args().temperature,
-    .verbosity = 0,
-    .gen = &sess->rnd(),
-    .stream_token = stream_token
-  }, prompt, sess->pos(), sess->kv_cache(), timing_info);
+void generate(cgemma::session* sess, const std::vector<int>& prompt, const gcpp::StreamFunc& stream_token) {
+  gcpp::RuntimeConfig cfg;
+  sess->args().CopyTo(cfg);
+  cfg.verbosity = 0;
+  cfg.gen = &sess->rnd();
+  cfg.stream_token = stream_token;
+  cfg.accept_token = [&](int token, float) {
+    return sess->inst()->disabled_tokens().find(token) == sess->inst()->disabled_tokens().end();
+  };
+  sess->inst()->model().Generate(cfg, prompt, sess->pos(), sess->kv_cache(), sess->timing_info());
 }
 
-int stream_mode(lua_State* L, cgemma::session* sess, const char* text) {
-  auto prompt = text2prompt(sess, text);
+int stream_mode(lua_State* L, cgemma::session* sess, const std::vector<int>& prompt) {
   size_t pos = 0;
   generate(sess, prompt, [&](int token, float) {
     auto eot = false;
@@ -95,8 +95,7 @@ int stream_mode(lua_State* L, cgemma::session* sess, const char* text) {
   return 1;
 }
 
-int normal_mode(lua_State* L, cgemma::session* sess, const char* text) {
-  auto prompt = text2prompt(sess, text);
+int normal_mode(lua_State* L, cgemma::session* sess, const std::vector<int>& prompt) {
   std::vector<int> output;
   size_t pos = 0;
   generate(sess, prompt, [&](int token, float) {
@@ -126,8 +125,10 @@ int call(lua_State* L) {
     return 2;
   }
   try {
-    auto text = luaL_checkstring(L, 2);
-    return lua_isfunction(L, 3) ? stream_mode(L, sess, text) : normal_mode(L, sess, text);
+    size_t len;
+    auto text = luaL_checklstring(L, 2, &len);
+    auto prompt = text2prompt(sess, text, len);
+    return lua_isfunction(L, 3) ? stream_mode(L, sess, prompt) : normal_mode(L, sess, prompt);
   } catch (const std::exception& e) {
     lua_pushnil(L);
     lua_pushstring(L, e.what());
@@ -304,6 +305,20 @@ int load(lua_State* L) {
   }
 }
 
+int stats(lua_State* L) {
+  auto ud = cgemma::session::check(L, 1);
+  lua_newtable(L);
+  lua_pushnumber(L, ud->timing_info().prefill_tok_sec);
+  lua_setfield(L, -2, "prefill_tokens_per_second");
+  lua_pushnumber(L, ud->timing_info().gen_tok_sec);
+  lua_setfield(L, -2, "generate_tokens_per_second");
+  lua_pushnumber(L, ud->timing_info().time_to_first_token);
+  lua_setfield(L, -2, "time_to_first_token");
+  lua_pushinteger(L, ud->timing_info().tokens_generated);
+  lua_setfield(L, -2, "tokens_generated");
+  return 1;
+}
+
 }
 
 namespace cgemma {
@@ -311,11 +326,11 @@ namespace cgemma {
 session::session(const instance* inst, unsigned int seed, int argc, char* argv[])
   : inst_(inst)
   , rnd_(seed)
-  , args_(argc, argv)
-  , kv_cache_(gcpp::KVCache::Create(inst->model().Info().model)) {
+  , args_(argc, argv) {
   if (auto err = args_.Validate()) {
     throw std::invalid_argument(err);
   }
+  kv_cache_ = gcpp::KVCache::Create(inst->model().Info().model, args_.prefill_tbatch_size);
 }
 
 void session::declare(lua_State* L) {
@@ -331,6 +346,7 @@ void session::declare(lua_State* L) {
     {"loads", loads},
     {"dump", dump},
     {"load", load},
+    {"stats", stats},
     {nullptr, nullptr}
   };
   luaL_newmetatable(L, name);
@@ -355,7 +371,13 @@ int session::create(lua_State* L) {
   try {
     std::random_device rd;
     auto seed = rd();
-    constexpr const char* available_options[] = {"--max_tokens", "--max_generated_tokens", "--temperature"};
+    constexpr const char* available_options[] = {
+      "--max_tokens",
+      "--max_generated_tokens",
+      "--prefill_tbatch",
+      "--decode_qbatch",
+      "--temperature"
+    };
     constexpr const int n = sizeof(available_options) / sizeof(available_options[0]);
     int argc = 1;
     char* argv[n * 2 + 1] = {const_cast<char*>("lua-cgemma")};

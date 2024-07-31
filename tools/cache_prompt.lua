@@ -20,19 +20,24 @@ if args.help then
   print("  --num_threads: Number of threads in scheduler. (default: hardware concurrency)")
   print("  --tokenizer: Path of tokenizer model file. (default: tokenizer.spm)")
   print("  --model: Model type (default: 2b-pt)")
-  print("    2b-it = 2B parameters, instruction-tuned")
-  print("    2b-pt = 2B parameters, pretrained")
-  print("    7b-it = 7B parameters instruction-tuned")
-  print("    7b-pt = 7B parameters, pretrained")
-  print("    9b-it = 9B parameters instruction-tuned")
-  print("    9b-pt = 9B parameters, pretrained")
-  print("    27b-it = 27B parameters instruction-tuned")
-  print("    27b-pt = 27B parameters, pretrained")
-  print("    gr2b-it = griffin 2B parameters, instruction-tuned")
-  print("    gr2b-pt = griffin 2B parameters, pretrained")
+  print("    2b-it = Gemma 2B parameters, instruction-tuned")
+  print("    2b-pt = Gemma 2B parameters, pretrained")
+  print("    7b-it = Gemma 7B parameters instruction-tuned")
+  print("    7b-pt = Gemma 7B parameters, pretrained")
+  print("    9b-it = Gemma2 9B parameters instruction-tuned")
+  print("    9b-pt = Gemma2 9B parameters, pretrained")
+  print("    27b-it = Gemma2 27B parameters instruction-tuned")
+  print("    27b-pt = Gemma2 27B parameters, pretrained")
+  print("    gr2b-it = Griffin 2B parameters, instruction-tuned")
+  print("    gr2b-pt = Griffin 2B parameters, pretrained")
+  print("    gemma2-2b-it = Gemma2 2.6B parameters, instruction-tuned")
+  print("    gemma2-2b-pt = Gemma2 2.6B parameters, pretrained")
   print("  --weights: Path of model weights file. (default: 2b-it-sfp.sbs)")
   print("  --weight_type: Weight type (default: sfp)")
+  print("  --max_tokens: Maximum number of tokens (default: 3072)")
+  print("  --prefill_tbatch: Maximum batch size during prefill phase (default: 64)")
   print("  --output: Path of output file. (default: dump.bin)")
+  print("  --stats: Print statistics at end.")
   return
 end
 
@@ -59,7 +64,9 @@ end
 
 -- Create a session
 local session, seed = gemma:session({
-  max_generated_tokens = 1
+  max_tokens = args.max_tokens,
+  max_generated_tokens = 1,
+  prefill_tbatch = args.prefill_tbatch
 })
 if not session then
   print("Opoos! ", seed)
@@ -90,3 +97,9 @@ if not ok then
   return
 end
 print(string.format("Done! Session states of the prompt have been dumped to \"%s\"", args.output or "dump.bin"))
+if args.stats then
+  print("\n\nStatistics:\n")
+  for k, v in pairs(session:stats()) do
+    print("  "..k.." = "..v)
+  end
+end

@@ -5,6 +5,7 @@ if args.help then
     "resty normal_mode.lua [options]"
   )
   print("  --kv_cache: Path of KV cache file.")
+  print("  --stats: Print statistics at end of turn.")
   return
 end
 
@@ -64,6 +65,13 @@ while true do
       return
     end
     print("reply: ", reply)
+
+    if args.stats then
+      print("\n\nStatistics:\n")
+      for k, v in pairs(session:stats()) do
+        print("  "..k.." = "..v)
+      end
+    end
   end
 
   print("Exceed the maximum number of tokens")

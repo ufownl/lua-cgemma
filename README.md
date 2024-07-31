@@ -98,16 +98,18 @@ Available options:
 {
   tokenizer = "/path/to/tokenizer.spm",  -- Path of tokenizer model file. (required)
   model = "2b-it",  -- Model type:
-                    -- 2b-it (2B parameters, instruction-tuned),
-                    -- 2b-pt (2B parameters, pretrained),
-                    -- 7b-it (7B parameters, instruction-tuned),
-                    -- 7b-pt (7B parameters, pretrained),
-                    -- 9b-it (9B parameters, instruction-tuned),
-                    -- 9b-pt (9B parameters, pretrained),
-                    -- 27b-it (27B parameters, instruction-tuned),
-                    -- 27b-pt (27B parameters, pretrained),
-                    -- gr2b-it (griffin 2B parameters, instruction-tuned),
-                    -- gr2b-pt (griffin 2B parameters, pretrained).
+                    -- 2b-it (Gemma 2B parameters, instruction-tuned),
+                    -- 2b-pt (Gemma 2B parameters, pretrained),
+                    -- 7b-it (Gemma 7B parameters, instruction-tuned),
+                    -- 7b-pt (Gemma 7B parameters, pretrained),
+                    -- 9b-it (Gemma2 9B parameters, instruction-tuned),
+                    -- 9b-pt (Gemma2 9B parameters, pretrained),
+                    -- 27b-it (Gemma2 27B parameters, instruction-tuned),
+                    -- 27b-pt (Gemma2 27B parameters, pretrained),
+                    -- gr2b-it (Griffin 2B parameters, instruction-tuned),
+                    -- gr2b-pt (Griffin 2B parameters, pretrained),
+                    -- gemma2-2b-it (Gemma2 2.6B parameters, instruction-tuned),
+                    -- gemma2-2b-pt (Gemma2 2.6B parameters, pretrained).
                     -- (required)
   weights = "/path/to/2b-it-sfp.sbs",  -- Path of model weights file. (required)
   weight_type = "sfp",  -- Weight type:
@@ -116,6 +118,7 @@ Available options:
                         -- bf16 (bfloat16)
   scheduler = sched_inst,  -- Instance of scheduler, if not provided a default
                            -- scheduler will be attached.
+  disabled_words = {...},  -- Words you don't want to generate.
 }
 ```
 
@@ -135,6 +138,12 @@ The only parameter `num_threads` indicates the number of threads in the internal
 
 Pin the scheduler's threads to logical processors.
 
+#### cgemma.instance.disabled_tokens
+
+**syntax:** `<table>tokens = inst:disabled_tokens()`
+
+Query the disabled tokens of a Gemma instance.
+
 #### cgemma.instance.session
 
 **syntax:** `<cgemma.session>sess, <number or string>seed = inst:session([<table>options])`
@@ -149,6 +158,8 @@ Available options and default values:
 {
   max_tokens = 3072,  -- Maximum number of tokens in prompt + generation.
   max_generated_tokens = 2048,  -- Maximum number of tokens to generate.
+  prefill_tbatch = 64,  -- Prefill: max tokens per batch.
+  decode_qbatch = 16,  -- Decode: max queries per batch.
   temperature = 1.0,  -- Temperature for top-K.
   seed = 42,  -- Random seed. (default is random setting)
 }
@@ -197,6 +208,23 @@ A successful call returns `true`. Otherwise, it returns `false` and a string des
 Load the state data from the given file to restore a previous session.
 
 A successful call returns `true`. Otherwise, it returns `false` and a string describing the error.
+
+#### cgemma.session.stats
+
+**syntax:** `<table>statistics = sess:stats()`
+
+Get statistics for the current session.
+
+Example of statistics:
+
+```lua
+{
+  prefill_tokens_per_second = 34.950446398036,
+  generate_tokens_per_second = 9.0089134969039,
+  time_to_first_token = 0.8253711364232,
+  tokens_generated = 85
+}
+```
 
 #### metatable(cgemma.session).__call
 
