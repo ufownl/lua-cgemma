@@ -19,7 +19,7 @@ if args.help then
   print("Available options:")
   print("  --num_threads: Number of threads in scheduler. (default: hardware concurrency)")
   print("  --tokenizer: Path of tokenizer model file. (default: tokenizer.spm)")
-  print("  --model: Model type (default: 2b-pt)")
+  print("  --model: Model type (default: gemma2-2b-pt)")
   print("    2b-it = Gemma 2B parameters, instruction-tuned")
   print("    2b-pt = Gemma 2B parameters, pretrained")
   print("    7b-it = Gemma 7B parameters instruction-tuned")
@@ -32,7 +32,7 @@ if args.help then
   print("    gr2b-pt = Griffin 2B parameters, pretrained")
   print("    gemma2-2b-it = Gemma2 2.6B parameters, instruction-tuned")
   print("    gemma2-2b-pt = Gemma2 2.6B parameters, pretrained")
-  print("  --weights: Path of model weights file. (default: 2b-it-sfp.sbs)")
+  print("  --weights: Path of model weights file. (default: 2.0-2b-it-sfp.sbs)")
   print("  --weight_type: Weight type (default: sfp)")
   print("  --max_tokens: Maximum number of tokens (default: 3072)")
   print("  --prefill_tbatch: Maximum batch size during prefill phase (default: 64)")
@@ -52,8 +52,8 @@ print("Loading model ...")
 -- Create a Gemma instance
 local gemma, err = require("cgemma").new({
   tokenizer = args.tokenizer or "tokenizer.spm",
-  model = args.model or "2b-pt",
-  weights = args.weights or "2b-it-sfp.sbs",
+  model = args.model or "gemma2-2b-pt",
+  weights = args.weights or "2.0-2b-it-sfp.sbs",
   weight_type = args.weight_type,
   scheduler = sched
 })

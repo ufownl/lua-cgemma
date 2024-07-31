@@ -36,8 +36,8 @@ sudo make install
 -- Create a Gemma instance
 local gemma, err = require("cgemma").new({
   tokenizer = "/path/to/tokenizer.spm",
-  model = "2b-it",
-  weights = "/path/to/2b-it-sfp.sbs"
+  model = "gemma2-2b-it",
+  weights = "/path/to/2.0-2b-it-sfp.sbs"
 })
 if not gemma then
   print("Opoos! ", err)
@@ -97,21 +97,21 @@ Available options:
 ```lua
 {
   tokenizer = "/path/to/tokenizer.spm",  -- Path of tokenizer model file. (required)
-  model = "2b-it",  -- Model type:
-                    -- 2b-it (Gemma 2B parameters, instruction-tuned),
-                    -- 2b-pt (Gemma 2B parameters, pretrained),
-                    -- 7b-it (Gemma 7B parameters, instruction-tuned),
-                    -- 7b-pt (Gemma 7B parameters, pretrained),
-                    -- 9b-it (Gemma2 9B parameters, instruction-tuned),
-                    -- 9b-pt (Gemma2 9B parameters, pretrained),
-                    -- 27b-it (Gemma2 27B parameters, instruction-tuned),
-                    -- 27b-pt (Gemma2 27B parameters, pretrained),
-                    -- gr2b-it (Griffin 2B parameters, instruction-tuned),
-                    -- gr2b-pt (Griffin 2B parameters, pretrained),
-                    -- gemma2-2b-it (Gemma2 2.6B parameters, instruction-tuned),
-                    -- gemma2-2b-pt (Gemma2 2.6B parameters, pretrained).
-                    -- (required)
-  weights = "/path/to/2b-it-sfp.sbs",  -- Path of model weights file. (required)
+  model = "gemma2-2b-it",  -- Model type:
+                           -- 2b-it (Gemma 2B parameters, instruction-tuned),
+                           -- 2b-pt (Gemma 2B parameters, pretrained),
+                           -- 7b-it (Gemma 7B parameters, instruction-tuned),
+                           -- 7b-pt (Gemma 7B parameters, pretrained),
+                           -- 9b-it (Gemma2 9B parameters, instruction-tuned),
+                           -- 9b-pt (Gemma2 9B parameters, pretrained),
+                           -- 27b-it (Gemma2 27B parameters, instruction-tuned),
+                           -- 27b-pt (Gemma2 27B parameters, pretrained),
+                           -- gr2b-it (Griffin 2B parameters, instruction-tuned),
+                           -- gr2b-pt (Griffin 2B parameters, pretrained),
+                           -- gemma2-2b-it (Gemma2 2.6B parameters, instruction-tuned),
+                           -- gemma2-2b-pt (Gemma2 2.6B parameters, pretrained).
+                           -- (required)
+  weights = "/path/to/2.0-2b-it-sfp.sbs",  -- Path of model weights file. (required)
   weight_type = "sfp",  -- Weight type:
                         -- sfp (8-bit FP, default)
                         -- f32 (float)

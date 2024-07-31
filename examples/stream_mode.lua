@@ -12,8 +12,8 @@ end
 -- Create a Gemma instance
 local gemma, err = require("cgemma").new({
   tokenizer = args.tokenizer or "tokenizer.spm",
-  model = args.model or "2b-it",
-  weights = args.weights or "2b-it-sfp.sbs",
+  model = args.model or "gemma2-2b-it",
+  weights = args.weights or "2.0-2b-it-sfp.sbs",
   weight_type = args.weight_type
 })
 if not gemma then
