@@ -108,8 +108,8 @@ Available options:
                            -- 27b-pt (Gemma2 27B parameters, pretrained),
                            -- gr2b-it (Griffin 2B parameters, instruction-tuned),
                            -- gr2b-pt (Griffin 2B parameters, pretrained),
-                           -- gemma2-2b-it (Gemma2 2.6B parameters, instruction-tuned),
-                           -- gemma2-2b-pt (Gemma2 2.6B parameters, pretrained).
+                           -- gemma2-2b-it (Gemma2 2B parameters, instruction-tuned),
+                           -- gemma2-2b-pt (Gemma2 2B parameters, pretrained).
                            -- (required)
   weights = "/path/to/2.0-2b-it-sfp.sbs",  -- Path of model weights file. (required)
   weight_type = "sfp",  -- Weight type:

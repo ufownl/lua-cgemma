@@ -29,7 +29,7 @@ function _M.help(description, usage)
   print("    9b-it = Gemma2 9B parameters instruction-tuned")
   print("    27b-it = Gemma2 27B parameters instruction-tuned")
   print("    gr2b-it = Griffin 2B parameters, instruction-tuned")
-  print("    gemma2-2b-it = Gemma2 2.6B parameters, instruction-tuned")
+  print("    gemma2-2b-it = Gemma2 2B parameters, instruction-tuned")
   print("  --weights: Path of model weights file. (default: 2.0-2b-it-sfp.sbs)")
   print("  --weight_type: Weight type (default: sfp)")
 end
