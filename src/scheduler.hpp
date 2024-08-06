@@ -9,7 +9,7 @@ namespace cgemma {
 class scheduler {
 public:
   scheduler();
-  explicit scheduler(size_t max_threads, size_t max_clusters);
+  explicit scheduler(size_t max_threads, size_t max_clusters, size_t pin_offset);
 
   gcpp::PerClusterPools& pools() { return pools_; }
 

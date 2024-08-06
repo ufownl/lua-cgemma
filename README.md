@@ -124,7 +124,7 @@ Available options:
 
 #### cgemma.scheduler
 
-**syntax:** `<cgemma.scheduler>sched, <string>err = cgemma.scheduler([<number>max_threads, <number>max_clusters])`
+**syntax:** `<cgemma.scheduler>sched, <string>err = cgemma.scheduler([<number>max_threads, <number>max_clusters, <number>pin_offset])`
 
 Create a scheduler instance.
 
@@ -136,6 +136,7 @@ Available parameters:
 | --------- | ----------- |
 | max_threads | Maximum number of threads to use. (default: `0` means unlimited) |
 | max_clusters | Maximum number of sockets/CCXs to use. (default: `0` means unlimited) |
+| pin_offset | Threads pin offset. (default: `0`) |
 
 #### cgemma.scheduler.cpu_topology
 
