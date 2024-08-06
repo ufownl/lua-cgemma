@@ -32,17 +32,16 @@ int disabled_tokens(lua_State* L) {
 
 namespace cgemma {
 
-instance::instance(int argc, char* argv[], scheduler* s)
-  : args_(argc, argv)
-  , sched_(s) {
+instance::instance(int argc, char* argv[], scheduler* sched)
+  : args_(argc, argv) {
   if (auto err = args_.Validate()) {
     throw std::invalid_argument(err);
   }
-  if (!s) {
+  if (!sched) {
     default_sched_ = std::make_unique<scheduler>();
-    sched_ = default_sched_.get();
+    sched = default_sched_.get();
   }
-  model_ = std::make_unique<gcpp::Gemma>(args_.tokenizer, args_.weights, args_.Info(), sched_->pool());
+  model_ = std::make_unique<gcpp::Gemma>(args_.tokenizer, args_.weights, args_.Info(), sched->pools());
 }
 
 void instance::declare(lua_State* L) {

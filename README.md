@@ -124,19 +124,24 @@ Available options:
 
 #### cgemma.scheduler
 
-**syntax:** `<cgemma.scheduler>sched, <string>err = cgemma.scheduler([<number>num_threads])`
+**syntax:** `<cgemma.scheduler>sched, <string>err = cgemma.scheduler([<number>max_threads, <number>max_clusters])`
 
 Create a scheduler instance.
 
 A successful call returns a scheduler instance. Otherwise, it returns `nil` and a string describing the error.
 
-The only parameter `num_threads` indicates the number of threads in the internal thread pool. If not provided or `num_threads <= 0`, it will create a default scheduler with the number of threads depending on the concurrent threads supported by the implementation.
+Available parameters:
 
-#### cgemma.scheduler.pin_threads
+| Parameter | Description |
+| --------- | ----------- |
+| max_threads | Maximum number of threads to use. (default: `0` means unlimited) |
+| max_clusters | Maximum number of sockets/CCXs to use. (default: `0` means unlimited) |
 
-**syntax:** `sched:pin_threads()`
+#### cgemma.scheduler.cpu_topology
 
-Pin the scheduler's threads to logical processors.
+**syntax:** `<table>clusters = sched:cpu_topology()`
+
+Query CPU topology.
 
 #### cgemma.instance.disabled_tokens
 

@@ -17,7 +17,6 @@ public:
   explicit instance(int argc, char* argv[], scheduler* s);
 
   const gcpp::LoaderArgs& args() const { return args_; }
-  scheduler& sched() const { return *sched_; }
   gcpp::Gemma& model() const { return *model_; }
   const std::unordered_set<int>& disabled_tokens() const { return disabled_tokens_; }
 
@@ -27,7 +26,6 @@ public:
 
 private:
   gcpp::LoaderArgs args_;
-  scheduler* sched_;
   std::unique_ptr<scheduler> default_sched_;
   std::unique_ptr<gcpp::Gemma> model_;
   std::unordered_set<int> disabled_tokens_;
