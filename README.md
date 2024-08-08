@@ -224,10 +224,13 @@ Example of statistics:
 
 ```lua
 {
-  prefill_tokens_per_second = 34.950446398036,
-  generate_tokens_per_second = 9.0089134969039,
-  time_to_first_token = 0.8253711364232,
-  tokens_generated = 85
+  prefill_duration = 1.6746909224894,
+  prefill_tokens = 26,
+  prefill_tokens_per_second = 15.525252839701,
+  time_to_first_token = 1.9843131969683,
+  generate_duration = 38.562645539409,
+  tokens_generated = 212,
+  generate_tokens_per_second = 5.4975481332926
 }
 ```
 

@@ -316,14 +316,20 @@ int load(lua_State* L) {
 int stats(lua_State* L) {
   auto ud = cgemma::session::check(L, 1);
   lua_newtable(L);
-  lua_pushnumber(L, ud->timing_info().prefill_tok_sec);
-  lua_setfield(L, -2, "prefill_tokens_per_second");
-  lua_pushnumber(L, ud->timing_info().gen_tok_sec);
-  lua_setfield(L, -2, "generate_tokens_per_second");
+  lua_pushnumber(L, ud->timing_info().prefill_duration);
+  lua_setfield(L, -2, "prefill_duration");
+  lua_pushinteger(L, ud->timing_info().prefill_tokens);
+  lua_setfield(L, -2, "prefill_tokens");
   lua_pushnumber(L, ud->timing_info().time_to_first_token);
   lua_setfield(L, -2, "time_to_first_token");
+  lua_pushnumber(L, ud->timing_info().generate_duration);
+  lua_setfield(L, -2, "generate_duration");
   lua_pushinteger(L, ud->timing_info().tokens_generated);
   lua_setfield(L, -2, "tokens_generated");
+  lua_pushnumber(L, ud->timing_info().prefill_tokens / ud->timing_info().prefill_duration);
+  lua_setfield(L, -2, "prefill_tokens_per_second");
+  lua_pushnumber(L, ud->timing_info().tokens_generated / ud->timing_info().generate_duration);
+  lua_setfield(L, -2, "generate_tokens_per_second");
   return 1;
 }
 
