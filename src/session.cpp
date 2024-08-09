@@ -64,7 +64,7 @@ void generate(cgemma::session* sess, const std::vector<int>& prompt, const gcpp:
       return sess->inst()->disabled_tokens().find(token) == sess->inst()->disabled_tokens().end();
     };
   }
-  sess->inst()->model().Generate(cfg, prompt, sess->pos(), sess->kv_cache(), sess->timing_info());
+  sess->inst()->model().Generate(cfg, gcpp::PromptTokens(prompt.data(), prompt.size()), sess->pos(), sess->kv_cache(), sess->timing_info());
 }
 
 int stream_mode(lua_State* L, cgemma::session* sess, const std::vector<int>& prompt) {
