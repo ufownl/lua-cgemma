@@ -6,7 +6,6 @@
 #include <algorithm>
 #include <utility>
 #include <numeric>
-#include <vector>
 #include <array>
 
 namespace {
@@ -14,44 +13,6 @@ namespace {
 constexpr const char name[] = "cgemma.session";
 constexpr const int gemma_unk_id = 3;
 constexpr const int gemma_eot_id = 107;
-
-std::vector<int> text2prompt(cgemma::session* sess, const char* text, size_t len) {
-  constexpr const char user_sot[] = "<start_of_turn>user\n";
-  constexpr const char model_sot[] = "<start_of_turn>model\n";
-  constexpr const char eot[] = "<end_of_turn>\n";
-  std::string s;
-  if (sess->inst()->model().Info().training == gcpp::ModelTraining::GEMMA_IT) {
-    s.reserve(sizeof(eot) - 1
-            + sizeof(user_sot) - 1
-            + len
-            + sizeof(eot) - 1
-            + sizeof(model_sot) - 1);
-    if (sess->pos() > 0) {
-      s.append(eot, sizeof(eot) - 1);
-    }
-    s.append(user_sot, sizeof(user_sot) - 1);
-    s.append(text, len);
-    s.append(eot, sizeof(eot) - 1);
-    s.append(model_sot, sizeof(model_sot) - 1);
-  } else {
-    s.append(text, len);
-  }
-  std::vector<int> prompt;
-  const auto max_prompt_tokens = sess->args().max_tokens - sess->args().max_generated_tokens;
-  prompt.reserve(max_prompt_tokens > sess->pos() + 64 ? max_prompt_tokens - sess->pos() : 64);
-  if (!sess->inst()->model().Tokenizer().Encode(s, &prompt)) {
-    throw std::runtime_error("Tokenizer encoding failed. (text2prompt)");
-  }
-  if (!sess->inst()->disabled_tokens().empty()) {
-    std::replace_if(prompt.begin(), prompt.end(), [&](int token) {
-      return sess->inst()->disabled_tokens().find(token) != sess->inst()->disabled_tokens().end();
-    }, gemma_unk_id);
-  }
-  if (sess->pos() == 0) {
-    prompt.emplace(prompt.cbegin(), gcpp::BOS_ID);
-  }
-  return prompt;
-}
 
 void generate(cgemma::session* sess, const std::vector<int>& prompt, const gcpp::StreamFunc& stream_token) {
   gcpp::RuntimeConfig cfg;
@@ -135,7 +96,7 @@ int call(lua_State* L) {
   try {
     size_t len;
     auto text = luaL_checklstring(L, 2, &len);
-    auto prompt = text2prompt(sess, text, len);
+    auto prompt = sess->tokenize(text, len);
     return lua_isfunction(L, 3) ? stream_mode(L, sess, prompt) : normal_mode(L, sess, prompt);
   } catch (const std::exception& e) {
     lua_pushnil(L);
@@ -345,6 +306,44 @@ session::session(const instance* inst, unsigned int seed, int argc, char* argv[]
     throw std::invalid_argument(err);
   }
   kv_cache_ = gcpp::KVCache::Create(inst->model().Info().model, args_.prefill_tbatch_size);
+}
+
+std::vector<int> session::tokenize(const char* text, size_t len) const {
+  constexpr const char user_sot[] = "<start_of_turn>user\n";
+  constexpr const char model_sot[] = "<start_of_turn>model\n";
+  constexpr const char eot[] = "<end_of_turn>\n";
+  std::string s;
+  if (inst_->model().Info().training == gcpp::ModelTraining::GEMMA_IT) {
+    s.reserve(sizeof(eot) - 1
+            + sizeof(user_sot) - 1
+            + len
+            + sizeof(eot) - 1
+            + sizeof(model_sot) - 1);
+    if (pos_ > 0) {
+      s.append(eot, sizeof(eot) - 1);
+    }
+    s.append(user_sot, sizeof(user_sot) - 1);
+    s.append(text, len);
+    s.append(eot, sizeof(eot) - 1);
+    s.append(model_sot, sizeof(model_sot) - 1);
+  } else {
+    s.append(text, len);
+  }
+  std::vector<int> prompt;
+  const auto max_prompt_tokens = args_.max_tokens - args_.max_generated_tokens;
+  prompt.reserve(max_prompt_tokens > pos_ + 64 ? max_prompt_tokens - pos_ : 64);
+  if (!inst_->model().Tokenizer().Encode(s, &prompt)) {
+    throw std::runtime_error("Tokenizer encoding failed. (session::tokenize)");
+  }
+  if (!inst_->disabled_tokens().empty()) {
+    std::replace_if(prompt.begin(), prompt.end(), [&](int token) {
+      return inst_->disabled_tokens().find(token) != inst_->disabled_tokens().end();
+    }, gemma_unk_id);
+  }
+  if (pos_ == 0) {
+    prompt.emplace(prompt.cbegin(), gcpp::BOS_ID);
+  }
+  return prompt;
 }
 
 void session::declare(lua_State* L) {
