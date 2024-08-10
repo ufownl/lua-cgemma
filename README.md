@@ -133,7 +133,7 @@ A successful call returns a scheduler instance. Otherwise, it returns `nil` and 
 Available parameters:
 
 | Parameter | Description | Default |
-| --------- | ----------- | ------- |
+| --------- | ----------- | :-----: |
 | max_threads | Maximum number of threads to use, `0` = unlimited. | `0` |
 | max_clusters | Maximum number of sockets/CCXs to use, `0` = unlimited. | `0` |
 | pin_threads | Pin threads? `-1` = auto, `0` = no, `1` = yes. | `-1` |
