@@ -33,12 +33,12 @@ int destroy(lua_State* L) {
 namespace cgemma {
 
 scheduler::scheduler()
-  : pools_(0, 0) {
+  : pools_(0, 0, -1) {
   // nop
 }
 
-scheduler::scheduler(size_t max_threads, size_t max_clusters)
-  : pools_(max_clusters, max_threads) {
+scheduler::scheduler(size_t max_threads, size_t max_clusters, int pin_threads)
+  : pools_(max_clusters, max_threads, pin_threads) {
   // nop
 }
 
@@ -75,9 +75,10 @@ scheduler* scheduler::check(lua_State* L, int index) {
 int scheduler::create(lua_State* L) {
   auto max_threads = lua_tointeger(L, 1);
   auto max_clusters = lua_tointeger(L, 2);
+  auto pin_threads = lua_isnumber(L, 3) ? lua_tointeger(L, 3) : -1;
   auto ud = lua_newuserdata(L, sizeof(scheduler));
   try {
-    new(ud) scheduler(max_threads, max_clusters);
+    new(ud) scheduler(max_threads, max_clusters, pin_threads);
     luaL_getmetatable(L, name);
     lua_setmetatable(L, -2);
     return 1;

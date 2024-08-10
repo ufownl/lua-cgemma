@@ -17,8 +17,9 @@ if args.help then
   print("Usage: cat /path/to/prompt.txt | resty cache_prompt.lua [options]")
   print()
   print("Available options:")
-  print("  --max_threads: Maximum number of threads to use. (default: 0 means unlimited)")
-  print("  --max_clusters: Maximum number of sockets/CCXs to use. (default: 0 means unlimited)")
+  print("  --max_threads: Maximum number of threads to use, 0 = unlimited. (default: 0)")
+  print("  --max_clusters: Maximum number of sockets/CCXs to use, 0 = unlimited. (default: 0)")
+  print("  --pin_threads: Pin threads? -1 = auto, 0 = no, 1 = yes. (default: -1)")
   print("  --tokenizer: Path of tokenizer model file. (default: tokenizer.spm)")
   print("  --model: Model type (default: gemma2-2b-pt)")
   print("    2b-it = Gemma 2B parameters, instruction-tuned")
@@ -43,7 +44,7 @@ if args.help then
 end
 
 -- Create a scheduler instance
-local sched, err = require("cgemma").scheduler(tonumber(args.max_threads), tonumber(args.max_clusters))
+local sched, err = require("cgemma").scheduler(tonumber(args.max_threads), tonumber(args.max_clusters), tonumber(args.pin_threads))
 if not sched then
   print("Opoos! ", err)
   return
