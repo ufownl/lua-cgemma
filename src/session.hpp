@@ -12,7 +12,7 @@ class instance;
 
 class session {
 public:
-  explicit session(instance* inst, int argc, char* argv[]);
+  session(instance* inst, int argc, char* argv[]);
 
   instance* inst() const { return inst_; }
   const gcpp::InferenceArgs& args() const { return args_; }
@@ -38,6 +38,8 @@ private:
   gcpp::KVCache kv_cache_;
   gcpp::TimingInfo timing_info_;
 };
+
+void push_timing(lua_State*L, const gcpp::TimingInfo& timing);
 
 }
 

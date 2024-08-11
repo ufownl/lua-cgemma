@@ -10,12 +10,16 @@
 
 namespace cgemma {
 
+constexpr const int PAD_ID = 0;
+constexpr const int UNK_ID = 3;
+constexpr const int EOT_ID = 107;
+
 class scheduler;
 class session;
 
 class instance {
 public:
-  explicit instance(int argc, char* argv[], unsigned int seed, scheduler* sched);
+  instance(int argc, char* argv[], unsigned int seed, scheduler* sched);
 
   const gcpp::LoaderArgs& args() const { return args_; }
   std::mt19937& rnd() { return rnd_; }

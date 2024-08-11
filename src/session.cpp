@@ -11,8 +11,6 @@
 namespace {
 
 constexpr const char name[] = "cgemma.session";
-constexpr const int gemma_unk_id = 3;
-constexpr const int gemma_eot_id = 107;
 
 void generate(cgemma::session* sess, const std::vector<int>& prompt, const gcpp::StreamFunc& stream_token) {
   gcpp::RuntimeConfig cfg;
@@ -34,7 +32,7 @@ int stream_mode(lua_State* L, cgemma::session* sess, const std::vector<int>& pro
     auto eot = false;
     lua_pushvalue(L, 3);
     if (pos >= prompt.size() && token != gcpp::EOS_ID) {
-      if (sess->inst()->model().Info().training == gcpp::ModelTraining::GEMMA_IT && token == gemma_eot_id) {
+      if (sess->inst()->model().Info().training == gcpp::ModelTraining::GEMMA_IT && token == cgemma::EOT_ID) {
         eot = true;
         lua_pushnil(L);
       } else {
@@ -69,7 +67,7 @@ int normal_mode(lua_State* L, cgemma::session* sess, const std::vector<int>& pro
   size_t pos = 0;
   generate(sess, prompt, [&](int token, float) {
     if (pos >= prompt.size() && token != gcpp::EOS_ID) {
-      if (sess->inst()->model().Info().training == gcpp::ModelTraining::GEMMA_IT && token == gemma_eot_id) {
+      if (sess->inst()->model().Info().training == gcpp::ModelTraining::GEMMA_IT && token == cgemma::EOT_ID) {
         return false;
       }
       output.push_back(token);
@@ -275,22 +273,7 @@ int load(lua_State* L) {
 }
 
 int stats(lua_State* L) {
-  auto ud = cgemma::session::check(L, 1);
-  lua_newtable(L);
-  lua_pushnumber(L, ud->timing_info().prefill_duration);
-  lua_setfield(L, -2, "prefill_duration");
-  lua_pushinteger(L, ud->timing_info().prefill_tokens);
-  lua_setfield(L, -2, "prefill_tokens");
-  lua_pushnumber(L, ud->timing_info().time_to_first_token);
-  lua_setfield(L, -2, "time_to_first_token");
-  lua_pushnumber(L, ud->timing_info().generate_duration);
-  lua_setfield(L, -2, "generate_duration");
-  lua_pushinteger(L, ud->timing_info().tokens_generated);
-  lua_setfield(L, -2, "tokens_generated");
-  lua_pushnumber(L, ud->timing_info().prefill_tokens / ud->timing_info().prefill_duration);
-  lua_setfield(L, -2, "prefill_tokens_per_second");
-  lua_pushnumber(L, ud->timing_info().tokens_generated / ud->timing_info().generate_duration);
-  lua_setfield(L, -2, "generate_tokens_per_second");
+  cgemma::push_timing(L, cgemma::session::check(L, 1)->timing_info());
   return 1;
 }
 
@@ -337,7 +320,7 @@ std::vector<int> session::tokenize(const char* text, size_t len) const {
   if (!inst_->disabled_tokens().empty()) {
     std::replace_if(prompt.begin(), prompt.end(), [&](int token) {
       return inst_->disabled_tokens().find(token) != inst_->disabled_tokens().end();
-    }, gemma_unk_id);
+    }, UNK_ID);
   }
   if (pos_ == 0) {
     prompt.emplace(prompt.cbegin(), gcpp::BOS_ID);
@@ -414,6 +397,24 @@ int session::create(lua_State* L) {
     lua_pushstring(L, e.what());
     return 2;
   }
+}
+
+void push_timing(lua_State*L, const gcpp::TimingInfo& timing) {
+  lua_newtable(L);
+  lua_pushnumber(L, timing.prefill_duration);
+  lua_setfield(L, -2, "prefill_duration");
+  lua_pushinteger(L, timing.prefill_tokens);
+  lua_setfield(L, -2, "prefill_tokens");
+  lua_pushnumber(L, timing.time_to_first_token);
+  lua_setfield(L, -2, "time_to_first_token");
+  lua_pushnumber(L, timing.generate_duration);
+  lua_setfield(L, -2, "generate_duration");
+  lua_pushinteger(L, timing.tokens_generated);
+  lua_setfield(L, -2, "tokens_generated");
+  lua_pushnumber(L, timing.prefill_tokens / timing.prefill_duration);
+  lua_setfield(L, -2, "prefill_tokens_per_second");
+  lua_pushnumber(L, timing.tokens_generated / timing.generate_duration);
+  lua_setfield(L, -2, "generate_tokens_per_second");
 }
 
 }
