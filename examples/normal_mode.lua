@@ -22,13 +22,12 @@ if not gemma then
 end
 
 -- Create a chat session
-local session, seed = gemma:session()
+local session, err = gemma:session()
 if not session then
-  print("Opoos! ", seed)
+  print("Opoos! ", err)
   return
 end
 
-print("Random seed of session: ", seed)
 while true do
   if args.kv_cache then
     -- Restore the previous session

@@ -5,7 +5,6 @@
 #include <gemma/gemma.h>
 #include <util/app.h>
 #include <vector>
-#include <random>
 
 namespace cgemma {
 
@@ -13,10 +12,9 @@ class instance;
 
 class session {
 public:
-  explicit session(const instance* inst, unsigned int seed, int argc, char* argv[]);
+  explicit session(instance* inst, int argc, char* argv[]);
 
-  const instance* inst() const { return inst_; }
-  std::mt19937& rnd() { return rnd_; }
+  instance* inst() const { return inst_; }
   const gcpp::InferenceArgs& args() const { return args_; }
   size_t pos() const { return pos_; }
   const gcpp::KVCache& kv_cache() const { return kv_cache_; }
@@ -34,8 +32,7 @@ public:
   static int create(lua_State* L);
 
 private:
-  const instance* inst_;
-  std::mt19937 rnd_;
+  instance* inst_;
   gcpp::InferenceArgs args_;
   size_t pos_ {0};
   gcpp::KVCache kv_cache_;

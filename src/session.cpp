@@ -18,7 +18,7 @@ void generate(cgemma::session* sess, const std::vector<int>& prompt, const gcpp:
   gcpp::RuntimeConfig cfg;
   sess->args().CopyTo(cfg);
   cfg.verbosity = 0;
-  cfg.gen = &sess->rnd();
+  cfg.gen = &sess->inst()->rnd();
   cfg.stream_token = stream_token;
   if (!sess->inst()->disabled_tokens().empty()) {
     cfg.accept_token = [&](int token, float) {
@@ -298,9 +298,8 @@ int stats(lua_State* L) {
 
 namespace cgemma {
 
-session::session(const instance* inst, unsigned int seed, int argc, char* argv[])
+session::session(instance* inst, int argc, char* argv[])
   : inst_(inst)
-  , rnd_(seed)
   , args_(argc, argv) {
   if (auto err = args_.Validate()) {
     throw std::invalid_argument(err);
@@ -382,8 +381,6 @@ int session::create(lua_State* L) {
   auto nargs = lua_gettop(L);
   auto inst = instance::check(L, 1);
   try {
-    std::random_device rd;
-    auto seed = rd();
     constexpr const char* available_options[] = {
       "--max_tokens",
       "--max_generated_tokens",
@@ -396,11 +393,6 @@ int session::create(lua_State* L) {
     char* argv[n * 2 + 1] = {const_cast<char*>("lua-cgemma")};
     if (nargs > 1) {
       luaL_checktype(L, 2, LUA_TTABLE);
-      lua_getfield(L, 2, "seed");
-      if (lua_isnumber(L, -1)) {
-        seed = lua_tointeger(L, -1);
-      }
-      lua_pop(L, 1);
       for (auto opt: available_options) {
         auto k = opt + 2;
         lua_getfield(L, 2, k);
@@ -413,15 +405,15 @@ int session::create(lua_State* L) {
       }
     }
     auto ud = lua_newuserdata(L, sizeof(session));
-    new(ud) session(inst, seed, argc, argv);
+    new(ud) session(inst, argc, argv);
     luaL_getmetatable(L, name);
     lua_setmetatable(L, -2);
-    lua_pushinteger(L, seed);
+    return 1;
   } catch (const std::exception& e) {
     lua_pushnil(L);
     lua_pushstring(L, e.what());
+    return 2;
   }
-  return 2;
 }
 
 }

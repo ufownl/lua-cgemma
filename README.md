@@ -45,13 +45,12 @@ if not gemma then
 end
 
 -- Create a chat session
-local session, seed = gemma:session()
+local session, err = gemma:session()
 if not session then
-  print("Opoos! ", seed)
+  print("Opoos! ", err)
   return
 end
 
-print("Random seed of session: ", seed)
 while true do
   print("New conversation started")
 
@@ -116,6 +115,7 @@ Available options:
                         -- sfp (8-bit FP, default)
                         -- f32 (float)
                         -- bf16 (bfloat16)
+  seed = 42,  -- Random seed. (default is random setting)
   scheduler = sched_inst,  -- Instance of scheduler, if not provided a default
                            -- scheduler will be attached.
   disabled_words = {...},  -- Words you don't want to generate.
@@ -152,11 +152,11 @@ Query the disabled tokens of a Gemma instance.
 
 #### cgemma.instance.session
 
-**syntax:** `<cgemma.session>sess, <number or string>seed = inst:session([<table>options])`
+**syntax:** `<cgemma.session>sess, <string>err = inst:session([<table>options])`
 
 Create a chat session.
 
-A successful call returns the session and its random seed. Otherwise, it returns `nil` and a string describing the error.
+A successful call returns the session. Otherwise, it returns `nil` and a string describing the error.
 
 Available options and default values:
 
@@ -167,7 +167,6 @@ Available options and default values:
   prefill_tbatch = 64,  -- Prefill: max tokens per batch.
   decode_qbatch = 16,  -- Decode: max queries per batch.
   temperature = 1.0,  -- Temperature for top-K.
-  seed = 42,  -- Random seed. (default is random setting)
 }
 ```
 

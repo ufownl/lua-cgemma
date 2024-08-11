@@ -5,6 +5,7 @@
 #include <gemma/gemma.h>
 #include <util/app.h>
 #include <unordered_set>
+#include <random>
 #include <memory>
 
 namespace cgemma {
@@ -14,9 +15,10 @@ class session;
 
 class instance {
 public:
-  explicit instance(int argc, char* argv[], scheduler* s);
+  explicit instance(int argc, char* argv[], unsigned int seed, scheduler* sched);
 
   const gcpp::LoaderArgs& args() const { return args_; }
+  std::mt19937& rnd() { return rnd_; }
   gcpp::Gemma& model() const { return *model_; }
   const std::unordered_set<int>& disabled_tokens() const { return disabled_tokens_; }
 
@@ -26,6 +28,7 @@ public:
 
 private:
   gcpp::LoaderArgs args_;
+  std::mt19937 rnd_;
   std::unique_ptr<scheduler> default_sched_;
   std::unique_ptr<gcpp::Gemma> model_;
   std::unordered_set<int> disabled_tokens_;
