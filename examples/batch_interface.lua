@@ -70,12 +70,15 @@ local queries = {
 }
 for i, query in ipairs(queries) do
   print(string.format("Turn %d:\n", i))
+
+  -- Make a batch call
   local result, err = require("cgemma").batch(unpack(query))
   if not result then
     print("Opoos! ", err)
     return
   end
 
+  -- Display the result of this batch call
   local idx = 1
   for j = 1, #query do
     if type(query[j]) == "string" then

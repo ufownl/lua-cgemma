@@ -32,6 +32,8 @@ sudo make install
 
 ### Synopsis
 
+First of all:
+
 ```lua
 -- Create a Gemma instance
 local gemma, err = require("cgemma").new({
@@ -43,7 +45,11 @@ if not gemma then
   print("Opoos! ", err)
   return
 end
+```
 
+Single call API example:
+
+```lua
 -- Create a chat session
 local session, err = gemma:session()
 if not session then
@@ -72,6 +78,54 @@ while true do
 
   print("Exceed the maximum number of tokens")
   session:reset()
+end
+```
+
+Batch call API example:
+
+```lua
+-- Create 2 chat sessions
+local sessions = {}
+for i = 1, 2 do
+  local session, err = gemma:session()
+  if not session then
+    print("Opoos! ", err)
+    return
+  end
+  table.insert(sessions, session)
+end
+
+-- Run multiple queries using batch interface
+local queries = {
+  {sessions[1], "Tell me 1+1=?",          sessions[2], "Hello, world!"},
+  {sessions[1], "Write it using Python.", sessions[2], "Write what I said in lowercase."}
+}
+for i, query in ipairs(queries) do
+  print(string.format("Turn %d:\n", i))
+
+  -- Make a batch call
+  local result, err = require("cgemma").batch(unpack(query))
+  if not result then
+    print("Opoos! ", err)
+    return
+  end
+
+  -- Display the result of this batch call
+  local idx = 1
+  for j = 1, #query do
+    if type(query[j]) == "string" then
+      print(string.format("Q%d: %s\n", idx, query[j]))
+      local resp, err = result(query[j - 1])
+      if resp then
+        print(resp)
+      else
+        print("Opoos! ", err)
+      end
+      idx = idx + 1
+    end
+  end
+
+  print()
 end
 ```
 
