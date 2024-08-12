@@ -74,11 +74,12 @@ std::vector<cgemma::session_context> parse_args(lua_State* L) {
       return 2;
     },
     [](lua_State* L, int narg, std::vector<cgemma::session_context>& sess_ctxs) {
+      auto& ctx = sess_ctxs.back();
       if (lua_isfunction(L, narg)) {
-        sess_ctxs.back().stream_fn = narg;
+        ctx.output.resize(1);
+        ctx.stream_fn = narg;
         return 0;
       } else {
-        auto& ctx = sess_ctxs.back();
         ctx.output.reserve(ctx.sess->args().max_generated_tokens);
         return init_arg_state(L, narg, sess_ctxs);
       }
@@ -204,8 +205,9 @@ int batch(lua_State* L) {
             eot = true;
             lua_pushnil(L);
           } else {
+            ctx.output.front() = token;
             std::string token_text;
-            if (!inst->model().Tokenizer().Decode(std::vector<int>{token}, &token_text)) {
+            if (!inst->model().Tokenizer().Decode(ctx.output, &token_text)) {
               throw std::runtime_error("Tokenizer decoding failed. (batch stream_mode)");
             }
             lua_pushlstring(L, token_text.data(), token_text.size());

@@ -28,6 +28,7 @@ void generate(cgemma::session* sess, const std::vector<int>& prompt, const gcpp:
 
 int stream_mode(lua_State* L, cgemma::session* sess, const std::vector<int>& prompt) {
   auto start_pos = sess->pos();
+  std::vector<int> output(1);
   generate(sess, prompt, [&](size_t, size_t pos, int token, float) {
     auto eot = false;
     lua_pushvalue(L, 3);
@@ -36,8 +37,9 @@ int stream_mode(lua_State* L, cgemma::session* sess, const std::vector<int>& pro
         eot = true;
         lua_pushnil(L);
       } else {
+        output.front() = token;
         std::string token_text;
-        if (!sess->inst()->model().Tokenizer().Decode(std::vector<int>{token}, &token_text)) {
+        if (!sess->inst()->model().Tokenizer().Decode(output, &token_text)) {
           throw std::runtime_error("Tokenizer decoding failed. (stream_mode)");
         }
         lua_pushlstring(L, token_text.data(), token_text.size());
