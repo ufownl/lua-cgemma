@@ -206,7 +206,7 @@ int batch(lua_State* L) {
           } else {
             std::string token_text;
             if (!inst->model().Tokenizer().Decode(std::vector<int>{token}, &token_text)) {
-              throw std::runtime_error("Tokenizer decoding failed. (stream_mode)");
+              throw std::runtime_error("Tokenizer decoding failed. (batch stream_mode)");
             }
             lua_pushlstring(L, token_text.data(), token_text.size());
           }

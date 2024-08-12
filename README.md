@@ -83,6 +83,28 @@ end
 
 Show information of cgemma module.
 
+#### cgemma.scheduler
+
+**syntax:** `<cgemma.scheduler>sched, <string>err = cgemma.scheduler([<number>max_threads[, <number>max_clusters[, <number>pin_threads]]])`
+
+Create a scheduler instance.
+
+A successful call returns a scheduler instance. Otherwise, it returns `nil` and a string describing the error.
+
+Available parameters:
+
+| Parameter | Description | Default |
+| --------- | ----------- | :-----: |
+| max_threads | Maximum number of threads to use, `0` = unlimited. | `0` |
+| max_clusters | Maximum number of sockets/CCXs to use, `0` = unlimited. | `0` |
+| pin_threads | Pin threads? `-1` = auto, `0` = no, `1` = yes. | `-1` |
+
+#### cgemma.scheduler.cpu_topology
+
+**syntax:** `<table>clusters = sched:cpu_topology()`
+
+Query CPU topology.
+
 #### cgemma.new
 
 **syntax:** `<cgemma.instance>inst, <string>err = cgemma.new(<table>options)`
@@ -121,28 +143,6 @@ Available options:
   disabled_words = {...},  -- Words you don't want to generate.
 }
 ```
-
-#### cgemma.scheduler
-
-**syntax:** `<cgemma.scheduler>sched, <string>err = cgemma.scheduler([<number>max_threads[, <number>max_clusters[, <number>pin_threads]]])`
-
-Create a scheduler instance.
-
-A successful call returns a scheduler instance. Otherwise, it returns `nil` and a string describing the error.
-
-Available parameters:
-
-| Parameter | Description | Default |
-| --------- | ----------- | :-----: |
-| max_threads | Maximum number of threads to use, `0` = unlimited. | `0` |
-| max_clusters | Maximum number of sockets/CCXs to use, `0` = unlimited. | `0` |
-| pin_threads | Pin threads? `-1` = auto, `0` = no, `1` = yes. | `-1` |
-
-#### cgemma.scheduler.cpu_topology
-
-**syntax:** `<table>clusters = sched:cpu_topology()`
-
-Query CPU topology.
 
 #### cgemma.instance.disabled_tokens
 
@@ -264,6 +264,37 @@ function stream(token, pos, prompt_size)
   return true
 end
 ```
+
+#### cgemma.batch
+
+**syntax:** `<cgemma.batch_result>result, <string>err = cgemma.batch(<cgemma.session>sess, <string>text[, <function>stream], ...)`
+
+Generate replies for multiple queries via the batch interface.
+
+A successful call returns a `cgemma.batch_result` object. Otherwise, it returns `nil` and a string describing the error.
+
+The stream function is the same as in [metatable(cgemma.session).call](#metatablecgemmasession__call).
+
+**NOTE:**
+1. Each element in a batch must start with a session, followed by a string and an optional stream function, with a stream function means that the corresponding session will be in stream mode instead of normal mode;
+2. All sessions in a batch must be created by the same Gemma instance;
+3. Sessions in a batch must not be duplicated.
+
+#### cgemma.batch_result.stats
+
+**syntax:** `<table>statistics = result:stats()`
+
+Get statistics for the batch call that returned the current result.
+
+The statistics fields are the same as in [cgemma.session.stats](#cgemmasessionstats).
+
+#### metatable(cgemma.batch_result).call
+
+**syntax:** `<string or boolean>reply, <string>err = result(<cgemma.session>sess)`
+
+Query the reply corresponding to the session in the result.
+
+A successful call returns the content of the reply (normal mode) or `true` (stream mode). Otherwise, it returns `nil` and a string describing the error.
 
 ## License
 

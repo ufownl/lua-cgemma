@@ -1,7 +1,7 @@
 #include "cgemma.hpp"
+#include "scheduler.hpp"
 #include "instance.hpp"
 #include "session.hpp"
-#include "scheduler.hpp"
 #include "batch.hpp"
 #include <hwy/timer.h>
 #include <hwy/per_target.h>
@@ -43,14 +43,14 @@ int info(lua_State* L) {
 int luaopen_cgemma(lua_State* L) {
   constexpr const luaL_Reg entries[] = {
     {"info", info},
-    {"new", cgemma::instance::create},
     {"scheduler", cgemma::scheduler::create},
+    {"new", cgemma::instance::create},
     {"batch", cgemma::batch},
     {nullptr, nullptr}
   };
+  cgemma::scheduler::declare(L);
   cgemma::instance::declare(L);
   cgemma::session::declare(L);
-  cgemma::scheduler::declare(L);
   cgemma::batch_result::declare(L);
   lua_newtable(L);
   luaL_register(L, nullptr, entries);
