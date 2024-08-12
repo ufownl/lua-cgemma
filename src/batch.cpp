@@ -194,7 +194,7 @@ int batch(lua_State* L) {
           }
           ctx.output.push_back(token);
         }
-        ctx.sess->incr_pos(1);
+        ctx.sess->set_pos(pos);
         return true;
       } else {
         throw std::runtime_error("Not implemented.");

@@ -12,12 +12,12 @@ namespace {
 
 constexpr const char name[] = "cgemma.session";
 
-void generate(cgemma::session* sess, const std::vector<int>& prompt, const gcpp::StreamFunc& stream_token) {
+void generate(cgemma::session* sess, const std::vector<int>& prompt, const gcpp::BatchStreamFunc& stream_token) {
   gcpp::RuntimeConfig cfg;
   sess->args().CopyTo(cfg);
   cfg.verbosity = 0;
   cfg.gen = &sess->inst()->rnd();
-  cfg.stream_token = stream_token;
+  cfg.batch_stream_token = stream_token;
   if (!sess->inst()->disabled_tokens().empty()) {
     cfg.accept_token = [&](int token, float) {
       return sess->inst()->disabled_tokens().find(token) == sess->inst()->disabled_tokens().end();
@@ -27,11 +27,11 @@ void generate(cgemma::session* sess, const std::vector<int>& prompt, const gcpp:
 }
 
 int stream_mode(lua_State* L, cgemma::session* sess, const std::vector<int>& prompt) {
-  size_t pos = 0;
-  generate(sess, prompt, [&](int token, float) {
+  auto start_pos = sess->pos();
+  generate(sess, prompt, [&](size_t, size_t pos, int token, float) {
     auto eot = false;
     lua_pushvalue(L, 3);
-    if (pos >= prompt.size() && token != gcpp::EOS_ID) {
+    if (pos - start_pos >= prompt.size() && token != gcpp::EOS_ID) {
       if (sess->inst()->model().Info().training == gcpp::ModelTraining::GEMMA_IT && token == cgemma::EOT_ID) {
         eot = true;
         lua_pushnil(L);
@@ -45,14 +45,13 @@ int stream_mode(lua_State* L, cgemma::session* sess, const std::vector<int>& pro
     } else {
       lua_pushnil(L);
     }
-    lua_pushinteger(L, pos);
+    lua_pushinteger(L, pos - start_pos);
     lua_pushinteger(L, prompt.size());
     lua_call(L, 3, 1);
     auto res = lua_toboolean(L, -1);
     lua_pop(L, 1);
     if (!eot && res) {
-      sess->incr_pos(1);
-      ++pos;
+      sess->set_pos(pos);
       return true;
     } else {
       return false;
@@ -63,17 +62,17 @@ int stream_mode(lua_State* L, cgemma::session* sess, const std::vector<int>& pro
 }
 
 int normal_mode(lua_State* L, cgemma::session* sess, const std::vector<int>& prompt) {
+  auto start_pos = sess->pos();
   std::vector<int> output;
-  size_t pos = 0;
-  generate(sess, prompt, [&](int token, float) {
-    if (pos >= prompt.size() && token != gcpp::EOS_ID) {
+  output.reserve(sess->args().max_generated_tokens);
+  generate(sess, prompt, [&](size_t, size_t pos, int token, float) {
+    if (pos - start_pos >= prompt.size() && token != gcpp::EOS_ID) {
       if (sess->inst()->model().Info().training == gcpp::ModelTraining::GEMMA_IT && token == cgemma::EOT_ID) {
         return false;
       }
       output.push_back(token);
     }
-    sess->incr_pos(1);
-    ++pos;
+    sess->set_pos(pos);
     return true;
   });
   std::string resp;

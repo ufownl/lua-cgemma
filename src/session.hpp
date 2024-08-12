@@ -23,7 +23,6 @@ public:
   gcpp::TimingInfo& timing_info() { return timing_info_; }
 
   void set_pos(size_t pos) { pos_ = pos; }
-  void incr_pos(size_t n) { pos_ += n; }
 
   std::vector<int> tokenize(const char* text, size_t len) const;
 
