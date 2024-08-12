@@ -74,7 +74,7 @@ std::vector<cgemma::session_context> parse_args(lua_State* L) {
       return 2;
     },
     [](lua_State* L, int narg, std::vector<cgemma::session_context>& sess_ctxs) {
-      if (lua_isfunction(L, 3)) {
+      if (lua_isfunction(L, narg)) {
         sess_ctxs.back().stream_fn = narg;
         return 0;
       } else {
@@ -207,7 +207,7 @@ int batch(lua_State* L) {
     }
     auto timing = generate(inst, sess_ctxs, cfg);
     auto ud = lua_newuserdata(L, sizeof(batch_result));
-    new(ud) batch_result(std::move(sess_ctxs), timing);
+    new(ud) batch_result(std::move(sess_ctxs), std::move(timing));
     luaL_getmetatable(L, name);
     lua_setmetatable(L, -2);
     return 1;
@@ -224,9 +224,9 @@ session_context::session_context(session* s)
   // nop
 }
 
-batch_result::batch_result(std::vector<session_context>&& sess_ctxs, const gcpp::TimingInfo& timing)
+batch_result::batch_result(std::vector<session_context>&& sess_ctxs, gcpp::TimingInfo&& timing)
   : sess_ctxs_(std::move(sess_ctxs))
-  , timing_(timing) {
+  , timing_(std::move(timing)) {
   for (const auto& ctx: sess_ctxs_) {
     sess2ctx_[ctx.sess] = &ctx;
   }

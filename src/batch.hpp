@@ -25,7 +25,7 @@ struct session_context {
 
 class batch_result {
 public:
-  batch_result(std::vector<session_context>&& sess_ctxs, const gcpp::TimingInfo& timing);
+  batch_result(std::vector<session_context>&& sess_ctxs, gcpp::TimingInfo&& timing);
 
   const session_context* get(session* sess) const;
   const gcpp::TimingInfo& timing_info() const { return timing_; }
