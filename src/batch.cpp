@@ -197,7 +197,33 @@ int batch(lua_State* L) {
         ctx.sess->set_pos(pos);
         return true;
       } else {
-        throw std::runtime_error("Not implemented.");
+        auto eot = false;
+        lua_pushvalue(L, ctx.stream_fn);
+        if (pos - ctx.start_pos >= ctx.prompt.size() && token != gcpp::EOS_ID) {
+          if (inst->model().Info().training == gcpp::ModelTraining::GEMMA_IT && token == cgemma::EOT_ID) {
+            eot = true;
+            lua_pushnil(L);
+          } else {
+            std::string token_text;
+            if (!inst->model().Tokenizer().Decode(std::vector<int>{token}, &token_text)) {
+              throw std::runtime_error("Tokenizer decoding failed. (stream_mode)");
+            }
+            lua_pushlstring(L, token_text.data(), token_text.size());
+          }
+        } else {
+          lua_pushnil(L);
+        }
+        lua_pushinteger(L, pos - ctx.start_pos);
+        lua_pushinteger(L, ctx.prompt.size());
+        lua_call(L, 3, 1);
+        auto res = lua_toboolean(L, -1);
+        lua_pop(L, 1);
+        if (!eot && res) {
+          ctx.sess->set_pos(pos);
+          return true;
+        } else {
+          return false;
+        }
       }
     };
     if (!inst->disabled_tokens().empty()) {

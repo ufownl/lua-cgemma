@@ -31,33 +31,62 @@ for i = 1, 3 do
   table.insert(sessions, session)
 end
 
+-- Define callback function for stream mode
+local function stream(prefix, token, pos, prompt_size)
+  if pos < prompt_size then
+    -- Gemma is processing the prompt
+    io.write(pos == 0 and prefix.."reading and thinking ." or ".")
+  elseif token then
+    -- Stream the token text output by Gemma here
+    if pos == prompt_size then
+      io.write("\nreply: ")
+    end
+    io.write(token)
+  else
+    -- Gemma's output reaches the end
+    print()
+  end
+  io.flush()
+  -- return `true` indicates success; return `false` indicates failure and terminates the generation
+  return true
+end
+
+-- Run multiple queries using batch interface
 local queries = {
   {
     sessions[1], "Tell me 1+1=?",
     sessions[2], "Hello, world!",
-    sessions[3], "Hey, man!"
+    sessions[3], "Hey, man!", function(token, pos, prompt_size)
+      return stream("Turn 1, Q3: Hey, man!\n", token, pos, prompt_size)
+    end
   },
   {
-    sessions[1], "Write it using Python.",
+    sessions[1], "Write it using Python.", function(token, pos, prompt_size)
+      return stream("Turn 2, Q1: Write it using Python.\n", token, pos, prompt_size)
+    end,
     sessions[2], "Print what I said using Python.",
     sessions[3], "Write what I said in lowercase."
   }
 }
 for i, query in ipairs(queries) do
-  -- Run multiple queries in normal mode using batch interface
   print(string.format("Turn %d:\n", i))
   local result, err = require("cgemma").batch(unpack(query))
   if not result then
     print("Opoos! ", err)
     return
   end
-  for j = 1, #query, 2 do
-    print(string.format("Q: %s\n", query[j + 1]))
-    local resp, err = result(query[j])
-    if resp then
-      print(resp)
-    else
-      print("Opoos! ", err)
+
+  local idx = 1
+  for j = 1, #query do
+    if type(query[j]) == "string" then
+      print(string.format("Q%d: %s\n", idx, query[j]))
+      local resp, err = result(query[j - 1])
+      if resp then
+        print(resp)
+      else
+        print("Opoos! ", err)
+      end
+      idx = idx + 1
     end
   end
 
