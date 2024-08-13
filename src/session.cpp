@@ -157,7 +157,7 @@ struct kv_cache_size {
 
 size_t dump_impl(char* buf, const cgemma::session* sess) {
   auto type = sess->inst()->model().Info().model;
-  auto size = gcpp::CallForModel<void, kv_cache_size>(type, sess->pos());
+  auto size = gcpp::CallForModel<void, kv_cache_size>(type, std::min(sess->pos(), sess->kv_cache().seq_len));
   uint16_t pos = sess->pos();
   if (buf) {
     std::memcpy(buf, name, sizeof(name) - 1);
@@ -196,7 +196,7 @@ void load_impl(cgemma::session* sess, const char* buf, size_t n) {
   buf += sizeof(name);
   size_t pos = *reinterpret_cast<const uint16_t*>(buf);
   buf += sizeof(uint16_t);
-  auto size = gcpp::CallForModel<void, kv_cache_size>(type, pos);
+  auto size = gcpp::CallForModel<void, kv_cache_size>(type, std::min(pos, sess->kv_cache().seq_len));
   if (n != sizeof(name) + sizeof(uint16_t) + size.total()) {
     throw std::invalid_argument("Invalid dump format: KVCache length mismatch");
   }
