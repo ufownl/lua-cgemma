@@ -98,7 +98,7 @@ end
 -- Run multiple queries using batch interface
 local queries = {
   {sessions[1], "Tell me 1+1=?",          sessions[2], "Hello, world!"},
-  {sessions[1], "Write it using Python.", sessions[2], "Write what I said in lowercase."}
+  {sessions[1], "Write it using Python.", sessions[2], "Write what I said in uppercase."}
 }
 for i, query in ipairs(queries) do
   print(string.format("Turn %d:\n", i))

@@ -65,7 +65,7 @@ local queries = {
       return stream("Turn 2, Q1: Write it using Python.\n", token, pos, prompt_size)
     end,
     sessions[2], "Print what I said using Python.",
-    sessions[3], "Write what I said in lowercase."
+    sessions[3], "Write what I said in uppercase."
   }
 }
 for i, query in ipairs(queries) do
