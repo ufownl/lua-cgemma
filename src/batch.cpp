@@ -25,12 +25,12 @@ public:
     }
   }
 
-  gcpp::MultiplePromptsTokens prompts() {
-    return gcpp::MultiplePromptsTokens(prompts_.data(), prompts_.size());
+  gcpp::QueriesPromptTokens prompts() {
+    return gcpp::QueriesPromptTokens(prompts_.data(), prompts_.size());
   }
 
-  gcpp::MultiplePositions start_pos() {
-    return gcpp::MultiplePositions(start_pos_.data(), start_pos_.size());
+  gcpp::QueriesPos start_pos() {
+    return gcpp::QueriesPos(start_pos_.data(), start_pos_.size());
   }
 
   gcpp::KVCaches kv_caches() {
