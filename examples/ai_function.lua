@@ -15,84 +15,85 @@ local gemma, err = require("cgemma").new({
   weight_type = args.weight_type
 })
 if not gemma then
-  print("Opoos! ", err)
-  return
+  error("Opoos! "..err)
 end
 
-local function implement(declaration, description)
-  local name = string.match(declaration, "^def%s+([a-zA-Z0-9_]+)")
-  if not name then
-    return nil, "Bad function declaration."
-  end
-  local session, err = gemma:session({
-    max_generated_tokens = 1
-  })
-  if not session then
-    print("Opoos! ", err)
-    return
-  end
-  local ok, err = session(string.format("You are now the following python function: ```# %s\n%s```\n\nOnly respond with your `return` value. Do not include any other explanatory text in your response.", description, declaration), function(token, pos, prompt_size)
-    return pos < prompt_size
-  end)
-  if not ok then
-    return nil, err
-  end
-  local context, err = session:dumps()
-  if not context then
-    return nil, err
-  end
-  return function(...)
-    local session, err = gemma:session()
-    if not session then
-      print("Opoos! ", err)
-      return
+local function implement(...)
+  local args = {...}
+  local func_names = {}
+  local queries = {}
+  for i, v in ipairs(args) do
+    if i % 2 == 0 then
+      local func_name = string.match(args[i - 1], "^def%s+([a-zA-Z0-9_]+)")
+      if not func_name then
+        error("Opoos! Bad function declaration.")
+      end
+      table.insert(func_names, func_name)
+      table.insert(func_names, "")
+      table.insert(func_names, "")
+      local session, err = gemma:session({max_generated_tokens = 1})
+      if not session then
+        error("Opoos! "..err)
+      end
+      table.insert(queries, session)
+      table.insert(queries, string.format("You are now the following python function:\n```python\n%s\n    '''%s'''\n```\n\nJust reply with your return value. Do not include any other explanatory text in your response.", args[i - 1], v))
+      table.insert(queries, function(token, pos, prompt_size)
+        return pos < prompt_size
+      end)
     end
-    session:loads(context)
-    local args = {...}
-    local text = ""
-    for i, v in ipairs(args) do
-      text = text..", "..(type(v) ~= nil and v or "None")
-    end
-    return session(string.format("%s(%s)", name, string.sub(text, 3)))
   end
+  local result, err = require("cgemma").batch(unpack(queries))
+  if not result then
+    error("Opoos! "..err)
+  end
+  local funcs = {}
+  for i = 1, #queries, 3 do
+    local func_name = func_names[i]
+    local context, err = queries[i]:dumps()
+    if not context then
+      error("Opoos! "..err)
+    end
+    table.insert(funcs, function(...)
+      local session, err = gemma:session()
+      if not session then
+        error("Opoos! "..err)
+      end
+      session:loads(context)
+      local args = {...}
+      for i, v in ipairs(args) do
+        if type(v) == "nil" then
+          args[i] = "None"
+        elseif type(v) == "string" then
+          args[i] = "'''"..v.."'''"
+        end
+      end
+      local reply, err = session(string.format("%s(%s)", func_name, table.concat(args, ", ")))
+      if not reply then
+        error("Opoos! "..err)
+      end
+      return reply
+    end)
+  end
+  return unpack(funcs)
 end
 
-print("Implementing `fake_people` ...")
-local fake_people, err = implement(
+print("Implementing `reverse`, `multiply`, `fake_people` ...")
+local reverse, multiply, fake_people = implement(
+  "def reverse(s: str) -> str:",
+  "Reverse the given string.",
+
+  "def multiply(a: int, b: int) -> int:",
+  "Multiply the given two integers.",
+
   "def fake_people(n: int) -> list[dict]:",
   "Generates n different examples of fake data representing people, each with a name, a gender, and an age."
 )
-if not fake_people then
-  print("Opoos! ", err)
-  return
-end
-print("Implementing `multiply` ...")
-local multiply, err = implement(
-  "def multiply(a: int, b: int) -> int:",
-  "Multiply the given two integers."
-)
-if not multiply then
-  print("Opoos! ", err)
-  return
-end
+
+print("Calling `reverse(\"Hello, world!\")` ...")
+print(reverse("Hello, world!"))
+
+print("Calling `multiply(6, 7)` ...")
+print(multiply(6, 7))
+
 print("Calling `fake_people(4)` ...")
-local resp, err = fake_people(4)
-if not resp then
-  print("Opoos! ", err)
-  return
-end
-print(resp)
-print("Calling `multiply(2, 9)` ...")
-local resp, err = multiply(2, 9)
-if not resp then
-  print("Opoos! ", err)
-  return
-end
-print(resp)
-print("Calling `fake_people(8)` ...")
-local resp, err = fake_people(8)
-if not resp then
-  print("Opoos! ", err)
-  return
-end
-print(resp)
+print(fake_people(4))
