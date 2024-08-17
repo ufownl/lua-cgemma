@@ -92,25 +92,25 @@ for i = 1, 2 do
 end
 
 -- Run multiple queries using batch interface
-local queries = {
+local turns = {
   {sessions[1], "Tell me 1+1=?",          sessions[2], "Hello, world!"},
   {sessions[1], "Write it using Python.", sessions[2], "Write what I said in uppercase."}
 }
-for i, query in ipairs(queries) do
+for i, queries in ipairs(turns) do
   print(string.format("Turn %d:\n", i))
 
   -- Make a batch call
-  local result, err = require("cgemma").batch(unpack(query))
+  local result, err = require("cgemma").batch(unpack(queries))
   if not result then
     error("Opoos! "..err)
   end
 
   -- Display the result of this batch call
   local idx = 1
-  for j = 1, #query do
-    if type(query[j]) == "string" then
-      print(string.format("Q%d: %s\n", idx, query[j]))
-      local resp, err = result(query[j - 1])
+  for j = 1, #queries do
+    if type(queries[j]) == "string" then
+      print(string.format("Q%d: %s\n", idx, queries[j]))
+      local resp, err = result(queries[j - 1])
       if resp then
         print(resp)
       else
