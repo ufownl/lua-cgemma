@@ -16,8 +16,7 @@ local gemma, err = require("cgemma").new({
   weight_type = args.weight_type
 })
 if not gemma then
-  print("Opoos! ", err)
-  return
+  error("Opoos! "..err)
 end
 
 -- Create 3 chat sessions
@@ -25,8 +24,7 @@ local sessions = {}
 for i = 1, 3 do
   local session, err = gemma:session()
   if not session then
-    print("Opoos! ", err)
-    return
+    error("Opoos! "..err)
   end
   table.insert(sessions, session)
 end
@@ -52,7 +50,7 @@ local function stream(prefix, token, pos, prompt_size)
 end
 
 -- Run multiple queries using batch interface
-local queries = {
+local turns = {
   {
     sessions[1], "Tell me 1+1=?",
     sessions[2], "Hello, world!",
@@ -68,26 +66,25 @@ local queries = {
     sessions[3], "Write what I said in uppercase."
   }
 }
-for i, query in ipairs(queries) do
+for i, queries in ipairs(turns) do
   print(string.format("Turn %d:\n", i))
 
   -- Make a batch call
-  local result, err = require("cgemma").batch(unpack(query))
+  local result, err = require("cgemma").batch(unpack(queries))
   if not result then
-    print("Opoos! ", err)
-    return
+    error("Opoos! "..err)
   end
 
   -- Display the result of this batch call
   local idx = 1
-  for j = 1, #query do
-    if type(query[j]) == "string" then
-      print(string.format("Q%d: %s\n", idx, query[j]))
-      local resp, err = result(query[j - 1])
+  for j = 1, #queries do
+    if type(queries[j]) == "string" then
+      print(string.format("Q%d: %s\n", idx, queries[j]))
+      local resp, err = result(queries[j - 1])
       if resp then
         print(resp)
       else
-        print("Opoos! ", err)
+        error("Opoos! "..err)
       end
       idx = idx + 1
     end

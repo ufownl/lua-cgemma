@@ -42,8 +42,7 @@ local gemma, err = require("cgemma").new({
   weights = "/path/to/2.0-2b-it-sfp.sbs"
 })
 if not gemma then
-  print("Opoos! ", err)
-  return
+  error("Opoos! "..err)
 end
 ```
 
@@ -53,8 +52,7 @@ Single call API example:
 -- Create a chat session
 local session, err = gemma:session()
 if not session then
-  print("Opoos! ", err)
-  return
+  error("Opoos! "..err)
 end
 
 while true do
@@ -70,8 +68,7 @@ while true do
     end
     local reply, err = session(text)
     if not reply then
-      print("Opoos! ", err)
-      return
+      error("Opoos! "..err)
     end
     print("reply: ", reply)
   end
@@ -89,8 +86,7 @@ local sessions = {}
 for i = 1, 2 do
   local session, err = gemma:session()
   if not session then
-    print("Opoos! ", err)
-    return
+    error("Opoos! "..err)
   end
   table.insert(sessions, session)
 end
@@ -106,8 +102,7 @@ for i, query in ipairs(queries) do
   -- Make a batch call
   local result, err = require("cgemma").batch(unpack(query))
   if not result then
-    print("Opoos! ", err)
-    return
+    error("Opoos! "..err)
   end
 
   -- Display the result of this batch call
@@ -119,7 +114,7 @@ for i, query in ipairs(queries) do
       if resp then
         print(resp)
       else
-        print("Opoos! ", err)
+        error("Opoos! "..err)
       end
       idx = idx + 1
     end

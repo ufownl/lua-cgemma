@@ -17,15 +17,13 @@ local gemma, err = require("cgemma").new({
   weight_type = args.weight_type
 })
 if not gemma then
-  print("Opoos! ", err)
-  return
+  error("Opoos! "..err)
 end
 
 -- Create a chat session
 local session, err = gemma:session()
 if not session then
-  print("Opoos! ", err)
-  return
+  error("Opoos! "..err)
 end
 
 while true do
@@ -51,8 +49,7 @@ while true do
         -- Dump the current session
         local ok, err = session:dump(args.kv_cache)
         if not ok then
-          print("Opoos! ", err)
-          return
+          error("Opoos! "..err)
         end
       end
       print("Done")
@@ -77,8 +74,7 @@ while true do
       return true
     end)
     if not ok then
-      print("Opoos! ", err)
-      return
+      error("Opoos! "..err)
     end
 
     if args.stats then
