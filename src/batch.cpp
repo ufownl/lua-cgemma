@@ -98,20 +98,6 @@ std::vector<cgemma::session_context> parse_args(lua_State* L) {
   if (sess_ctxs.back().prompt.empty()) {
     luaL_error(L, "Too few arguments, %d expected", nargs + 1);
   }
-  size_t max_prompt_size = 0;
-  for (const auto& ctx: sess_ctxs) {
-    max_prompt_size = std::max(max_prompt_size, ctx.prompt.size());
-  }
-  for (auto& ctx: sess_ctxs) {
-    auto padding_size = max_prompt_size - ctx.prompt.size();
-    if (padding_size > 0) {
-      std::vector<int> prompt;
-      prompt.reserve(max_prompt_size);
-      prompt.resize(padding_size, cgemma::PAD_ID);
-      prompt.insert(prompt.end(), ctx.prompt.begin(), ctx.prompt.end());
-      ctx.prompt = std::move(prompt);
-    }
-  }
   return sess_ctxs;
 }
 
