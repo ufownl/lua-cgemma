@@ -326,6 +326,13 @@ std::vector<int> session::tokenize(const char* text, size_t len) const {
   if (pos_ == 0) {
     prompt.emplace(prompt.cbegin(), gcpp::BOS_ID);
   }
+  if (inst_->model().Info().training == gcpp::ModelTraining::PALIGEMMA) {
+    std::vector<int> sep;
+    if (!inst_->model().Tokenizer().Encode("\n", &sep)) {
+      throw std::runtime_error("Tokenizer encoding failed. (session::tokenize)");
+    }
+    prompt.insert(prompt.cend(), sep.cbegin(), sep.cend());
+  }
   return prompt;
 }
 
