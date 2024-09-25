@@ -18,6 +18,7 @@ public:
   instance* inst() const { return inst_; }
   const gcpp::InferenceArgs& args() const { return args_; }
   const gcpp::ImageTokens* image_tokens() const { return img_.BatchSize() > 0 ? &img_ : nullptr; }
+  gcpp::ImageTokens* image_tokens() { return img_.BatchSize() > 0 ? &img_ : nullptr; }
   size_t pos() const { return pos_; }
   const gcpp::KVCache& kv_cache() const { return kv_cache_; }
   gcpp::KVCache& kv_cache() { return kv_cache_; }

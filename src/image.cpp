@@ -31,11 +31,16 @@ void declare(lua_State* L) {
   lua_setfield(L, -2, "__index");
 }
 
+gcpp::Image* to(lua_State* L, int index) {
+  return lua_isuserdata(L, index) && luaL_checkudata(L, index, name) ? static_cast<gcpp::Image*>(lua_touserdata(L, index)) : nullptr;
+}
+
 gcpp::Image* check(lua_State* L, int index) {
-  if (!lua_isuserdata(L, index) || !luaL_checkudata(L, index, name)) {
+  auto ud = to(L, index);
+  if (!ud) {
     luaL_error(L, "Bad argument #%d, %s expected", index, name);
   }
-  return static_cast<gcpp::Image*>(lua_touserdata(L, index));
+  return ud;
 }
 
 int create(lua_State* L) {

@@ -168,14 +168,19 @@ struct kv_cache_size {
 
 size_t dump_impl(char* buf, const cgemma::session* sess) {
   auto type = sess->inst()->model().Info().model;
-  auto size = gcpp::CallForModel<void, kv_cache_size>(type, std::min(sess->pos(), sess->kv_cache().seq_len));
   uint16_t pos = sess->pos();
+  auto img = sess->image_tokens();
+  auto size = gcpp::CallForModel<void, kv_cache_size>(type, std::min(sess->pos(), sess->kv_cache().seq_len));
   if (buf) {
     std::memcpy(buf, name, sizeof(name) - 1);
     buf[sizeof(name) - 1] = static_cast<char>(type);
     buf += sizeof(name);
     std::memcpy(buf, &pos, sizeof(pos));
     buf += sizeof(pos);
+    if (img) {
+      std::memcpy(buf, img->Const(), img->NumBytes());
+      buf += img->NumBytes();
+    }
 #define DUMP_CACHE(FIELD)                                                                 \
   do {                                                                                    \
     if (size.get<kv_cache_field::FIELD>() > 0) {                                          \
@@ -188,7 +193,7 @@ size_t dump_impl(char* buf, const cgemma::session* sess) {
     DUMP_CACHE(rglru_cache);
 #undef DUMP_CACHE
   }
-  return sizeof(name) + sizeof(pos) + size.total();
+  return sizeof(name) + sizeof(pos) + (img ? img->NumBytes() : 0) + size.total();
 }
 
 void load_impl(cgemma::session* sess, const char* buf, size_t n) {
@@ -207,11 +212,16 @@ void load_impl(cgemma::session* sess, const char* buf, size_t n) {
   buf += sizeof(name);
   size_t pos = *reinterpret_cast<const uint16_t*>(buf);
   buf += sizeof(uint16_t);
+  auto img = sess->image_tokens();
   auto size = gcpp::CallForModel<void, kv_cache_size>(type, std::min(pos, sess->kv_cache().seq_len));
-  if (n != sizeof(name) + sizeof(uint16_t) + size.total()) {
+  if (n != sizeof(name) + sizeof(uint16_t) + (img ? img->NumBytes() : 0) + size.total()) {
     throw std::invalid_argument("Invalid dump format: KVCache length mismatch");
   }
   sess->set_pos(pos);
+  if (img) {
+    std::memcpy(img->All(), buf, img->NumBytes());
+    buf += img->NumBytes();
+  }
 #define LOAD_CACHE(FIELD)                                                                 \
   do {                                                                                    \
     if (size.get<kv_cache_field::FIELD>() > 0) {                                          \
@@ -431,9 +441,11 @@ int session::create(lua_State* L) {
     auto sess = new(ud) session(inst, argc, argv);
     if (sess->image_tokens()) {
       lua_getfield(L, 2, "image");
-      auto img = image::check(L, -1);
+      auto img = image::to(L, -1);
       lua_pop(L, 1);
-      sess->embed(*img);
+      if (img) {
+        sess->embed(*img);
+      }
     }
     luaL_getmetatable(L, name);
     lua_setmetatable(L, -2);
