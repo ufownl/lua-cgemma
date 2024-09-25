@@ -10,6 +10,7 @@
 
 namespace cgemma {
 
+constexpr const int PAD_ID = 0;
 constexpr const int UNK_ID = 3;
 constexpr const int EOT_ID = 107;
 

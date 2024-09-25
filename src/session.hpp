@@ -3,6 +3,7 @@
 
 #include <lua.hpp>
 #include <gemma/gemma.h>
+#include <paligemma/image.h>
 #include <util/app.h>
 #include <vector>
 
@@ -16,6 +17,7 @@ public:
 
   instance* inst() const { return inst_; }
   const gcpp::InferenceArgs& args() const { return args_; }
+  const gcpp::ImageTokens* image_tokens() const { return img_.BatchSize() > 0 ? &img_ : nullptr; }
   size_t pos() const { return pos_; }
   const gcpp::KVCache& kv_cache() const { return kv_cache_; }
   gcpp::KVCache& kv_cache() { return kv_cache_; }
@@ -25,6 +27,7 @@ public:
   void set_pos(size_t pos) { pos_ = pos; }
 
   std::vector<int> tokenize(const char* text, size_t len) const;
+  void embed(const gcpp::Image& img);
 
   static void declare(lua_State* L);
   static session* check(lua_State* L, int index);
@@ -33,6 +36,7 @@ public:
 private:
   instance* inst_;
   gcpp::InferenceArgs args_;
+  gcpp::ImageTokens img_;
   size_t pos_ {0};
   gcpp::KVCache kv_cache_;
   gcpp::TimingInfo timing_info_;

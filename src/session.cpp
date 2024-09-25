@@ -1,6 +1,6 @@
 #include "session.hpp"
 #include "instance.hpp"
-#include "scheduler.hpp"
+#include "image.hpp"
 #include "utils/file_io.hpp"
 #include <stdexcept>
 #include <algorithm>
@@ -23,7 +23,18 @@ void generate(cgemma::session* sess, const std::vector<int>& prompt, const gcpp:
       return sess->inst()->disabled_tokens().find(token) == sess->inst()->disabled_tokens().end();
     };
   }
-  sess->inst()->model().Generate(cfg, gcpp::PromptTokens(prompt.data(), prompt.size()), sess->pos(), sess->kv_cache(), sess->timing_info());
+  cfg.image_tokens = sess->image_tokens();
+  if (cfg.image_tokens) {
+    std::vector<int> image_prompt;
+    image_prompt.reserve(cfg.image_tokens->BatchSize() + prompt.size());
+    image_prompt.resize(cfg.image_tokens->BatchSize(), cgemma::PAD_ID);
+    image_prompt.insert(image_prompt.cend(), prompt.cbegin(), prompt.cend());
+    cfg.prefill_tbatch_size = image_prompt.size();
+    sess->set_pos(0);
+    sess->inst()->model().Generate(cfg, gcpp::PromptTokens(image_prompt.data(), image_prompt.size()), sess->pos(), image_prompt.size(), sess->kv_cache(), sess->timing_info());
+  } else {
+    sess->inst()->model().Generate(cfg, gcpp::PromptTokens(prompt.data(), prompt.size()), sess->pos(), sess->kv_cache(), sess->timing_info());
+  }
 }
 
 int stream_mode(lua_State* L, cgemma::session* sess, const std::vector<int>& prompt) {
@@ -278,6 +289,17 @@ int stats(lua_State* L) {
   return 1;
 }
 
+template <class Config>
+struct image_tokens_factory {
+  gcpp::ImageTokens operator()() {
+    if constexpr (Config::VitConfig::kSeqLen > 0) {
+      return gcpp::ImageTokens(Config::VitConfig::kSeqLen, Config::kModelDim);
+    } else {
+      return gcpp::ImageTokens();
+    }
+  }
+};
+
 }
 
 namespace cgemma {
@@ -288,7 +310,9 @@ session::session(instance* inst, int argc, char* argv[])
   if (auto err = args_.Validate()) {
     throw std::invalid_argument(err);
   }
-  kv_cache_ = gcpp::KVCache::Create(inst->model().Info().model, args_.prefill_tbatch_size);
+  auto type = inst->model().Info().model;
+  img_ = gcpp::CallForModel<void, image_tokens_factory>(type);
+  kv_cache_ = gcpp::KVCache::Create(type, args_.prefill_tbatch_size);
 }
 
 std::vector<int> session::tokenize(const char* text, size_t len) const {
@@ -334,6 +358,14 @@ std::vector<int> session::tokenize(const char* text, size_t len) const {
     prompt.insert(prompt.cend(), sep.cbegin(), sep.cend());
   }
   return prompt;
+}
+
+void session::embed(const gcpp::Image& img) {
+  gcpp::RuntimeConfig cfg;
+  args_.CopyTo(cfg);
+  cfg.verbosity = 0;
+  cfg.gen = &inst_->rnd();
+  inst_->model().GenerateImageTokens(cfg, img, img_);
 }
 
 void session::declare(lua_State* L) {
@@ -396,7 +428,13 @@ int session::create(lua_State* L) {
       }
     }
     auto ud = lua_newuserdata(L, sizeof(session));
-    new(ud) session(inst, argc, argv);
+    auto sess = new(ud) session(inst, argc, argv);
+    if (sess->image_tokens()) {
+      lua_getfield(L, 2, "image");
+      auto img = image::check(L, -1);
+      lua_pop(L, 1);
+      sess->embed(*img);
+    }
     luaL_getmetatable(L, name);
     lua_setmetatable(L, -2);
     return 1;
