@@ -2,6 +2,7 @@
 #include "scheduler.hpp"
 #include "instance.hpp"
 #include "session.hpp"
+#include "image.hpp"
 #include "batch.hpp"
 #include <hwy/timer.h>
 #include <hwy/per_target.h>
@@ -45,12 +46,14 @@ int luaopen_cgemma(lua_State* L) {
     {"info", info},
     {"scheduler", cgemma::scheduler::create},
     {"new", cgemma::instance::create},
+    {"image", cgemma::image::create},
     {"batch", cgemma::batch},
     {nullptr, nullptr}
   };
   cgemma::scheduler::declare(L);
   cgemma::instance::declare(L);
   cgemma::session::declare(L);
+  cgemma::image::declare(L);
   cgemma::batch_result::declare(L);
   lua_newtable(L);
   luaL_register(L, nullptr, entries);
