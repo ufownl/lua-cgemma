@@ -46,6 +46,9 @@ private:
 
 int init_arg_state(lua_State* L, int narg, std::vector<cgemma::session_context>& sess_ctxs) {
   auto sess = cgemma::session::check(L, narg);
+  if (sess->image_tokens()) {
+    throw std::invalid_argument("PaliGemma sessions do not support batch calling yet.");
+  }
   if (sess->pos() >= sess->args().max_tokens) {
     throw std::invalid_argument("Sessions in a batch must not be ended.");
   }
