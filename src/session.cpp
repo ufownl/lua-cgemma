@@ -422,13 +422,15 @@ int session::create(lua_State* L) {
       "--temperature"
     };
     constexpr const int n = sizeof(available_options) / sizeof(available_options[0]);
+    const gcpp::Image* img = image::to(L, 2);
+    auto opt_idx = img ? 3 : 2;
     int argc = 1;
     char* argv[n * 2 + 1] = {const_cast<char*>("lua-cgemma")};
-    if (nargs > 1) {
-      luaL_checktype(L, 2, LUA_TTABLE);
+    if (nargs >= opt_idx) {
+      luaL_checktype(L, opt_idx, LUA_TTABLE);
       for (auto opt: available_options) {
         auto k = opt + 2;
-        lua_getfield(L, 2, k);
+        lua_getfield(L, opt_idx, k);
         auto v = lua_tostring(L, -1);
         if (v) {
           argv[argc++] = const_cast<char*>(opt);
@@ -439,13 +441,8 @@ int session::create(lua_State* L) {
     }
     auto ud = lua_newuserdata(L, sizeof(session));
     auto sess = new(ud) session(inst, argc, argv);
-    if (sess->image_tokens()) {
-      lua_getfield(L, 2, "image");
-      auto img = image::to(L, -1);
-      lua_pop(L, 1);
-      if (img) {
-        sess->embed(*img);
-      }
+    if (sess->image_tokens() && img) {
+      sess->embed(*img);
     }
     luaL_getmetatable(L, name);
     lua_setmetatable(L, -2);
