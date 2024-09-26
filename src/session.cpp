@@ -30,7 +30,6 @@ void generate(cgemma::session* sess, const std::vector<int>& prompt, const gcpp:
     image_prompt.resize(cfg.image_tokens->BatchSize(), cgemma::PAD_ID);
     image_prompt.insert(image_prompt.cend(), prompt.cbegin(), prompt.cend());
     cfg.prefill_tbatch_size = image_prompt.size();
-    sess->set_pos(0);
     sess->inst()->model().Generate(cfg, gcpp::PromptTokens(image_prompt.data(), image_prompt.size()), sess->pos(), image_prompt.size(), sess->kv_cache(), sess->timing_info());
   } else {
     sess->inst()->model().Generate(cfg, gcpp::PromptTokens(prompt.data(), prompt.size()), sess->pos(), sess->kv_cache(), sess->timing_info());
@@ -38,6 +37,9 @@ void generate(cgemma::session* sess, const std::vector<int>& prompt, const gcpp:
 }
 
 int stream_mode(lua_State* L, cgemma::session* sess, const std::vector<int>& prompt) {
+  if (sess->image_tokens()) {
+    sess->set_pos(0);
+  }
   auto start_pos = sess->pos();
   std::vector<int> output(1);
   generate(sess, prompt, [&](size_t, size_t pos, int token, float) {
@@ -75,6 +77,9 @@ int stream_mode(lua_State* L, cgemma::session* sess, const std::vector<int>& pro
 }
 
 int normal_mode(lua_State* L, cgemma::session* sess, const std::vector<int>& prompt) {
+  if (sess->image_tokens()) {
+    sess->set_pos(0);
+  }
   auto start_pos = sess->pos();
   std::vector<int> output;
   output.reserve(sess->args().max_generated_tokens);
