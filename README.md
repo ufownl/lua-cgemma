@@ -201,7 +201,7 @@ Query the disabled tokens of a Gemma instance.
 
 #### cgemma.instance.session
 
-**syntax:** `<cgemma.session>sess, <string>err = inst:session([<table>options])`
+**syntax:** `<cgemma.session>sess, <string>err = inst:session([[<cgemma.image>image, ]<table>options])`
 
 Create a chat session.
 
@@ -313,6 +313,14 @@ function stream(token, pos, prompt_size)
   return true
 end
 ```
+
+#### cgemma.image
+
+**syntax:** `<cgemma.image>img, <string>err = cgemma.image(<string>path)`
+
+Load image data from a specific file (PPM format: P6, binary).
+
+A successful call returns a `cgemma.image` object containing the image data. Otherwise, it returns `nil` and a string describing the error.
 
 #### cgemma.batch
 
