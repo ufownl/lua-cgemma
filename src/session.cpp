@@ -41,11 +41,15 @@ int stream_mode(lua_State* L, cgemma::session* sess, const std::vector<int>& pro
     sess->set_pos(0);
   }
   auto start_pos = sess->pos();
+  auto prompt_size = prompt.size();
+  if (sess->image_tokens()) {
+    prompt_size += sess->image_tokens()->BatchSize();
+  }
   std::vector<int> output(1);
   generate(sess, prompt, [&](size_t, size_t pos, int token, float) {
     auto eot = false;
     lua_pushvalue(L, 3);
-    if (pos - start_pos >= prompt.size() && token != gcpp::EOS_ID) {
+    if (pos - start_pos >= prompt_size && token != gcpp::EOS_ID) {
       if (sess->inst()->model().Info().training == gcpp::ModelTraining::GEMMA_IT && token == cgemma::EOT_ID) {
         eot = true;
         lua_pushnil(L);
@@ -61,7 +65,7 @@ int stream_mode(lua_State* L, cgemma::session* sess, const std::vector<int>& pro
       lua_pushnil(L);
     }
     lua_pushinteger(L, pos - start_pos);
-    lua_pushinteger(L, prompt.size());
+    lua_pushinteger(L, prompt_size);
     lua_call(L, 3, 1);
     auto res = lua_toboolean(L, -1);
     lua_pop(L, 1);
@@ -81,10 +85,14 @@ int normal_mode(lua_State* L, cgemma::session* sess, const std::vector<int>& pro
     sess->set_pos(0);
   }
   auto start_pos = sess->pos();
+  auto prompt_size = prompt.size();
+  if (sess->image_tokens()) {
+    prompt_size += sess->image_tokens()->BatchSize();
+  }
   std::vector<int> output;
   output.reserve(sess->args().max_generated_tokens);
   generate(sess, prompt, [&](size_t, size_t pos, int token, float) {
-    if (pos - start_pos >= prompt.size() && token != gcpp::EOS_ID) {
+    if (pos - start_pos >= prompt_size && token != gcpp::EOS_ID) {
       if (sess->inst()->model().Info().training == gcpp::ModelTraining::GEMMA_IT && token == cgemma::EOT_ID) {
         return false;
       }
