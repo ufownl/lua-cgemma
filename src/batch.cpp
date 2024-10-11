@@ -14,7 +14,7 @@ public:
     kv_caches_.reserve(sess_ctxs.size());
     for (auto& ctx: sess_ctxs) {
       prompts_.emplace_back(ctx.prompt.data(), ctx.prompt.size());
-      start_pos_.emplace_back(ctx.start_pos);
+      start_pos_.emplace_back(ctx.start_pos > 0 ? ctx.start_pos + 1 : 0);
       kv_caches_.emplace_back(std::move(ctx.sess->kv_cache()));
     }
   }
@@ -178,8 +178,8 @@ int batch(lua_State* L) {
     cfg.batch_stream_token = [&](size_t query_idx, size_t pos, int token, float) {
       auto& ctx = sess_ctxs[query_idx];
       if (ctx.stream_fn == 0) {
-        if (pos - ctx.start_pos >= ctx.prompt.size() && token != gcpp::EOS_ID) {
-          if (inst->model().Info().training == gcpp::ModelTraining::GEMMA_IT && token == EOT_ID) {
+        if (pos - ctx.start_pos >= ctx.prompt.size()) {
+          if (token == gcpp::EOS_ID || inst->model().Info().training == gcpp::ModelTraining::GEMMA_IT && token == EOT_ID) {
             return false;
           }
           ctx.output.push_back(token);
@@ -189,20 +189,18 @@ int batch(lua_State* L) {
       } else {
         auto eot = false;
         lua_pushvalue(L, ctx.stream_fn);
-        if (pos - ctx.start_pos >= ctx.prompt.size() && token != gcpp::EOS_ID) {
-          if (inst->model().Info().training == gcpp::ModelTraining::GEMMA_IT && token == cgemma::EOT_ID) {
-            eot = true;
-            lua_pushnil(L);
-          } else {
-            ctx.output.front() = token;
-            std::string token_text;
-            if (!inst->model().Tokenizer().Decode(ctx.output, &token_text)) {
-              throw std::runtime_error("Tokenizer decoding failed. (batch stream_mode)");
-            }
-            lua_pushlstring(L, token_text.data(), token_text.size());
-          }
-        } else {
+        if (pos - ctx.start_pos < ctx.prompt.size()) {
           lua_pushnil(L);
+        } else if (token == gcpp::EOS_ID || inst->model().Info().training == gcpp::ModelTraining::GEMMA_IT && token == EOT_ID) {
+          eot = true;
+          lua_pushnil(L);
+        } else {
+          ctx.output.front() = token;
+          std::string token_text;
+          if (!inst->model().Tokenizer().Decode(ctx.output, &token_text)) {
+            throw std::runtime_error("Tokenizer decoding failed. (batch stream_mode)");
+          }
+          lua_pushlstring(L, token_text.data(), token_text.size());
         }
         lua_pushinteger(L, pos - ctx.start_pos);
         lua_pushinteger(L, ctx.prompt.size());

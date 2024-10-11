@@ -24,15 +24,16 @@ void generate(cgemma::session* sess, const std::vector<int>& prompt, const gcpp:
     };
   }
   cfg.image_tokens = sess->image_tokens();
+  size_t start_pos = sess->pos() > 0 ? sess->pos() + 1 : 0;
   if (cfg.image_tokens) {
     std::vector<int> image_prompt;
     image_prompt.reserve(cfg.image_tokens->BatchSize() + prompt.size());
     image_prompt.resize(cfg.image_tokens->BatchSize(), cgemma::PAD_ID);
     image_prompt.insert(image_prompt.cend(), prompt.cbegin(), prompt.cend());
     cfg.prefill_tbatch_size = image_prompt.size();
-    sess->inst()->model().Generate(cfg, gcpp::PromptTokens(image_prompt.data(), image_prompt.size()), sess->pos(), image_prompt.size(), sess->kv_cache(), sess->timing_info());
+    sess->inst()->model().Generate(cfg, gcpp::PromptTokens(image_prompt.data(), image_prompt.size()), start_pos, image_prompt.size(), sess->kv_cache(), sess->timing_info());
   } else {
-    sess->inst()->model().Generate(cfg, gcpp::PromptTokens(prompt.data(), prompt.size()), sess->pos(), sess->kv_cache(), sess->timing_info());
+    sess->inst()->model().Generate(cfg, gcpp::PromptTokens(prompt.data(), prompt.size()), start_pos, sess->kv_cache(), sess->timing_info());
   }
 }
 
@@ -49,20 +50,18 @@ int stream_mode(lua_State* L, cgemma::session* sess, const std::vector<int>& pro
   generate(sess, prompt, [&](size_t, size_t pos, int token, float) {
     auto eot = false;
     lua_pushvalue(L, 3);
-    if (pos - start_pos >= prompt_size && token != gcpp::EOS_ID) {
-      if (sess->inst()->model().Info().training == gcpp::ModelTraining::GEMMA_IT && token == cgemma::EOT_ID) {
-        eot = true;
-        lua_pushnil(L);
-      } else {
-        output.front() = token;
-        std::string token_text;
-        if (!sess->inst()->model().Tokenizer().Decode(output, &token_text)) {
-          throw std::runtime_error("Tokenizer decoding failed. (stream_mode)");
-        }
-        lua_pushlstring(L, token_text.data(), token_text.size());
-      }
-    } else {
+    if (pos - start_pos < prompt_size) {
       lua_pushnil(L);
+    } else if (token == gcpp::EOS_ID || sess->inst()->model().Info().training == gcpp::ModelTraining::GEMMA_IT && token == cgemma::EOT_ID) {
+      eot = true;
+      lua_pushnil(L);
+    } else {
+      output.front() = token;
+      std::string token_text;
+      if (!sess->inst()->model().Tokenizer().Decode(output, &token_text)) {
+        throw std::runtime_error("Tokenizer decoding failed. (stream_mode)");
+      }
+      lua_pushlstring(L, token_text.data(), token_text.size());
     }
     lua_pushinteger(L, pos - start_pos);
     lua_pushinteger(L, prompt_size);
@@ -92,8 +91,8 @@ int normal_mode(lua_State* L, cgemma::session* sess, const std::vector<int>& pro
   std::vector<int> output;
   output.reserve(sess->args().max_generated_tokens);
   generate(sess, prompt, [&](size_t, size_t pos, int token, float) {
-    if (pos - start_pos >= prompt_size && token != gcpp::EOS_ID) {
-      if (sess->inst()->model().Info().training == gcpp::ModelTraining::GEMMA_IT && token == cgemma::EOT_ID) {
+    if (pos - start_pos >= prompt_size) {
+      if (token == gcpp::EOS_ID || sess->inst()->model().Info().training == gcpp::ModelTraining::GEMMA_IT && token == cgemma::EOT_ID) {
         return false;
       }
       output.push_back(token);
