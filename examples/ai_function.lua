@@ -36,7 +36,7 @@ local function implement(...)
         error("Opoos! "..err)
       end
       table.insert(queries, session)
-      table.insert(queries, string.format("You are now the following python function:\n```python\n%s\n    '''%s'''\n```\n\nJust reply with your return value. Do not include any other explanatory text in your response.", args[i - 1], v))
+      table.insert(queries, string.format("You are now the following python function:\n```python\n%s\n    '''%s'''\n```\n\nWhen you are called later, please reply with your return value only.", args[i - 1], v))
       table.insert(queries, function(token, pos, prompt_size)
         return pos < prompt_size
       end)
