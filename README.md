@@ -323,9 +323,9 @@ end
 
 #### cgemma.image
 
-**syntax:** `<cgemma.image>img, <string>err = cgemma.image(<string>path)`
+**syntax:** `<cgemma.image>img, <string>err = cgemma.image(<string>data_or_path)`
 
-Load image data from a specific file (PPM format: P6, binary).
+Load image data from the given Lua string or a specific file (PPM format: P6, binary).
 
 A successful call returns a `cgemma.image` object containing the image data. Otherwise, it returns `nil` and a string describing the error.
 
