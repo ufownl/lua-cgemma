@@ -25,6 +25,7 @@ public:
   std::mt19937& rnd() { return rnd_; }
   gcpp::Gemma& model() const { return *model_; }
   const std::unordered_set<int>& disabled_tokens() const { return disabled_tokens_; }
+  size_t max_tokens() const;
 
   static void declare(lua_State* L);
   static instance* check(lua_State* L, int index);

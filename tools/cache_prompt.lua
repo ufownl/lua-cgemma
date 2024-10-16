@@ -36,7 +36,6 @@ if args.help then
   print("    27b-pt = Gemma2 27B parameters, pretrained")
   print("  --weights: Path of model weights file. (default: 2.0-2b-it-sfp.sbs)")
   print("  --weight_type: Weight type (default: sfp)")
-  print("  --max_tokens: Maximum number of tokens (default: 3072)")
   print("  --prefill_tbatch: Maximum batch size during prefill phase (default: 64)")
   print("  --output: Path of output file. (default: dump.bin)")
   print("  --stats: Print statistics at end.")
@@ -66,7 +65,6 @@ end
 
 -- Create a session
 local session, seed = gemma:session({
-  max_tokens = args.max_tokens,
   max_generated_tokens = 1,
   prefill_tbatch = args.prefill_tbatch
 })

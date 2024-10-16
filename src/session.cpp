@@ -110,7 +110,7 @@ int normal_mode(lua_State* L, cgemma::session* sess, const std::vector<int>& pro
 
 int call(lua_State* L) {
   auto sess = cgemma::session::check(L, 1);
-  if (sess->pos() >= sess->args().max_tokens) {
+  if (sess->pos() >= sess->inst()->max_tokens()) {
     lua_pushnil(L);
     lua_pushliteral(L, "Session has ended.");
     return 2;
@@ -134,7 +134,7 @@ int destroy(lua_State* L) {
 
 int ready(lua_State* L) {
   auto sess = cgemma::session::check(L, 1);
-  lua_pushboolean(L, sess->pos() < sess->args().max_tokens ? 1 : 0);
+  lua_pushboolean(L, sess->pos() < sess->inst()->max_tokens() ? 1 : 0);
   return 1;
 }
 
@@ -173,7 +173,7 @@ private:
 
 template <class Config>
 struct kv_cache_size {
-  kv_cache_size_store operator()(size_t pos) {
+  kv_cache_size_store operator()(size_t pos) const {
     return kv_cache_size_store(Config(), pos);
   }
 };
@@ -313,7 +313,7 @@ int stats(lua_State* L) {
 
 template <class Config>
 struct image_tokens_factory {
-  gcpp::ImageTokens operator()() {
+  gcpp::ImageTokens operator()() const {
     if constexpr (Config::VitConfig::kSeqLen > 0) {
       return gcpp::ImageTokens(Config::VitConfig::kSeqLen, Config::kModelDim);
     } else {
@@ -359,7 +359,7 @@ std::vector<int> session::tokenize(const char* text, size_t len) const {
     s.append(text, len);
   }
   std::vector<int> prompt;
-  const auto max_prompt_tokens = args_.max_tokens - args_.max_generated_tokens;
+  const auto max_prompt_tokens = inst_->max_tokens() - args_.max_generated_tokens;
   prompt.reserve(max_prompt_tokens > pos_ + 64 ? max_prompt_tokens - pos_ : 64);
   if (!inst_->model().Tokenizer().Encode(s, &prompt)) {
     throw std::runtime_error("Tokenizer encoding failed. (session::tokenize)");
@@ -427,7 +427,6 @@ int session::create(lua_State* L) {
   auto inst = instance::check(L, 1);
   try {
     constexpr const char* available_options[] = {
-      "--max_tokens",
       "--max_generated_tokens",
       "--prefill_tbatch",
       "--decode_qbatch",

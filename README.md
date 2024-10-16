@@ -212,7 +212,6 @@ Available options and default values:
 
 ```lua
 {
-  max_tokens = 3072,  -- Maximum number of tokens in prompt + generation.
   max_generated_tokens = 2048,  -- Maximum number of tokens to generate.
   prefill_tbatch = 64,  -- Prefill: max tokens per batch.
   decode_qbatch = 16,  -- Decode: max queries per batch.
@@ -337,7 +336,7 @@ The stream function is the same as in [metatable(cgemma.session).call](#metatabl
 > 1. Each element in a batch must start with a session, followed by a string and an optional stream function, with a stream function means that the corresponding session will be in stream mode instead of normal mode;
 > 2. All sessions in a batch must be created by the same Gemma instance;
 > 3. Sessions in a batch must not be duplicated;
-> 4. Inference arguments of batch call: `max_tokens`, `max_generated_tokens`, `prefill_tbatch`, and `decode_qbatch` will be the minimum value of all sessions, and `temperature` will be the average value of all sessions.
+> 4. Inference arguments of batch call: `max_generated_tokens`, `prefill_tbatch`, and `decode_qbatch` will be the minimum value of all sessions, and `temperature` will be the average value of all sessions.
 
 #### cgemma.batch_result.stats
 

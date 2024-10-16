@@ -28,6 +28,13 @@ int disabled_tokens(lua_State* L) {
   return 1;
 }
 
+template <class Config>
+struct max_tokens {
+  constexpr size_t operator()() const {
+    return Config::kSeqLen;
+  }
+};
+
 }
 
 namespace cgemma {
@@ -43,6 +50,10 @@ instance::instance(int argc, char* argv[], unsigned int seed, scheduler* sched)
     sched = default_sched_.get();
   }
   model_ = std::make_unique<gcpp::Gemma>(args_.tokenizer, args_.weights, args_.Info(), sched->pools());
+}
+
+size_t instance::max_tokens() const {
+  return gcpp::CallForModel<void, ::max_tokens>(model_->Info().model);
 }
 
 void instance::declare(lua_State* L) {
