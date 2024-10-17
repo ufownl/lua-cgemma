@@ -50,7 +50,7 @@ int create(lua_State* L) {
   try {
     auto ud = lua_newuserdata(L, sizeof(gcpp::Image));
     auto img = new(ud) gcpp::Image;
-    if (!img->ReadPPM(hwy::Span<char>(const_cast<char*>(buf), len))) {
+    if (!img->ReadPPM(hwy::Span<const char>(buf, len))) {
       if (!img->ReadPPM(std::string(buf, len))) {
         throw std::runtime_error("Failed to read PPM image");
       }
