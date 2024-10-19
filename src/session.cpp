@@ -152,12 +152,15 @@ enum class kv_cache_field: size_t {
 
 class kv_cache_size_store {
 public:
-  template <class Config>
-  kv_cache_size_store(const Config&, size_t pos) {
-    gcpp::CachePosSize<Config> pos_size;
-    store_[static_cast<size_t>(kv_cache_field::kv_cache)] = pos_size() * pos * sizeof(std::declval<gcpp::KVCache>().kv_cache[0]);
-    store_[static_cast<size_t>(kv_cache_field::conv1d_cache)] = Config::kGriffinLayers * std::max(Config::kConv1dWidth - 1, 0) * Config::kModelDim * sizeof(std::declval<gcpp::KVCache>().conv1d_cache[0]);
-    store_[static_cast<size_t>(kv_cache_field::rglru_cache)] = Config::kGriffinLayers * Config::kModelDim * sizeof(std::declval<gcpp::KVCache>().rglru_cache[0]);
+  kv_cache_size_store(const gcpp::ModelConfig& cfg, size_t pos) {
+    store_[static_cast<size_t>(kv_cache_field::kv_cache)] = cfg.CachePosSize() * pos * sizeof(std::declval<gcpp::KVCache>().kv_cache[0]);
+    auto griffin_layers = cfg.NumLayersOfType(gcpp::LayerAttentionType::kGriffinRecurrentBlock);
+    size_t conv1d_width = 0;
+    for (const auto& layer_cfg: cfg.layer_configs) {
+      conv1d_width = std::max(conv1d_width, layer_cfg.conv1d_width);
+    }
+    store_[static_cast<size_t>(kv_cache_field::conv1d_cache)] = griffin_layers * (conv1d_width == 0 ? 0 : conv1d_width - 1) * cfg.model_dim * sizeof(std::declval<gcpp::KVCache>().conv1d_cache[0]);
+    store_[static_cast<size_t>(kv_cache_field::rglru_cache)] = griffin_layers * cfg.model_dim * sizeof(std::declval<gcpp::KVCache>().rglru_cache[0]);
   }
 
   template <kv_cache_field Field>
@@ -171,18 +174,11 @@ private:
   std::array<size_t, static_cast<size_t>(kv_cache_field::end)> store_;
 };
 
-template <class Config>
-struct kv_cache_size {
-  kv_cache_size_store operator()(size_t pos) const {
-    return kv_cache_size_store(Config(), pos);
-  }
-};
-
 size_t dump_impl(char* buf, const cgemma::session* sess) {
   auto type = sess->inst()->model().Info().model;
   uint16_t pos = sess->pos();
   auto img = sess->image_tokens();
-  auto size = gcpp::CallForModel<void, kv_cache_size>(type, std::min(sess->pos(), sess->kv_cache().seq_len));
+  kv_cache_size_store size(sess->inst()->model().GetModelConfig(), std::min(sess->pos(), sess->kv_cache().seq_len));
   if (buf) {
     std::memcpy(buf, name, sizeof(name) - 1);
     buf[sizeof(name) - 1] = static_cast<char>(type);
@@ -225,7 +221,7 @@ void load_impl(cgemma::session* sess, const char* buf, size_t n) {
   size_t pos = *reinterpret_cast<const uint16_t*>(buf);
   buf += sizeof(uint16_t);
   auto img = sess->image_tokens();
-  auto size = gcpp::CallForModel<void, kv_cache_size>(type, std::min(pos, sess->kv_cache().seq_len));
+  kv_cache_size_store size(sess->inst()->model().GetModelConfig(), std::min(pos, sess->kv_cache().seq_len));
   if (n != sizeof(name) + sizeof(uint16_t) + (img ? img->NumBytes() : 0) + size.total()) {
     throw std::invalid_argument("Invalid dump format: KVCache length mismatch");
   }
@@ -332,9 +328,11 @@ session::session(instance* inst, int argc, char* argv[])
   if (auto err = args_.Validate()) {
     throw std::invalid_argument(err);
   }
-  auto type = inst->model().Info().model;
-  img_ = gcpp::CallForModel<void, image_tokens_factory>(type);
-  kv_cache_ = gcpp::KVCache::Create(type, args_.prefill_tbatch_size);
+  const auto& cfg = inst->model().GetModelConfig();
+  if (cfg.vit_seq_len > 0) {
+    img_ = gcpp::ImageTokens(cfg.vit_seq_len, cfg.model_dim);
+  }
+  kv_cache_ = gcpp::KVCache::Create(cfg, args_.prefill_tbatch_size);
 }
 
 std::vector<int> session::tokenize(const char* text, size_t len) const {
@@ -425,32 +423,32 @@ session* session::check(lua_State* L, int index) {
 int session::create(lua_State* L) {
   auto nargs = lua_gettop(L);
   auto inst = instance::check(L, 1);
-  try {
-    constexpr const char* available_options[] = {
-      "--max_generated_tokens",
-      "--prefill_tbatch",
-      "--decode_qbatch",
-      "--temperature"
-    };
-    constexpr const int n = sizeof(available_options) / sizeof(available_options[0]);
-    const gcpp::Image* img = image::to(L, 2);
-    auto opt_idx = img ? 3 : 2;
-    int argc = 1;
-    char* argv[n * 2 + 1] = {const_cast<char*>("lua-cgemma")};
-    if (nargs >= opt_idx) {
-      luaL_checktype(L, opt_idx, LUA_TTABLE);
-      for (auto opt: available_options) {
-        auto k = opt + 2;
-        lua_getfield(L, opt_idx, k);
-        auto v = lua_tostring(L, -1);
-        if (v) {
-          argv[argc++] = const_cast<char*>(opt);
-          argv[argc++] = const_cast<char*>(v);
-        }
-        lua_pop(L, 1);
+  const gcpp::Image* img = image::to(L, 2);
+  auto opt_idx = img ? 3 : 2;
+  constexpr const char* available_options[] = {
+    "--max_generated_tokens",
+    "--prefill_tbatch",
+    "--decode_qbatch",
+    "--temperature"
+  };
+  constexpr const int n = sizeof(available_options) / sizeof(available_options[0]);
+  int argc = 1;
+  char* argv[n * 2 + 1] = {const_cast<char*>("lua-cgemma")};
+  if (nargs >= opt_idx) {
+    luaL_checktype(L, opt_idx, LUA_TTABLE);
+    for (auto opt: available_options) {
+      auto k = opt + 2;
+      lua_getfield(L, opt_idx, k);
+      auto v = lua_tostring(L, -1);
+      if (v) {
+        argv[argc++] = const_cast<char*>(opt);
+        argv[argc++] = const_cast<char*>(v);
       }
+      lua_pop(L, 1);
     }
-    auto ud = lua_newuserdata(L, sizeof(session));
+  }
+  auto ud = lua_newuserdata(L, sizeof(session));
+  try {
     auto sess = new(ud) session(inst, argc, argv);
     if (sess->image_tokens() && img) {
       sess->embed(*img);
