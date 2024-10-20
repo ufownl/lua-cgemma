@@ -134,23 +134,30 @@ Show information of cgemma module.
 
 #### cgemma.scheduler
 
-**syntax:** `<cgemma.scheduler>sched, <string>err = cgemma.scheduler([<number>max_threads[, <number>max_clusters[, <number>pin_threads]]])`
+**syntax:** `<cgemma.scheduler>sched, <string>err = cgemma.scheduler([<table>options])`
 
 Create a scheduler instance.
 
 A successful call returns a scheduler instance. Otherwise, it returns `nil` and a string describing the error.
 
-Available parameters:
+Available options and default values:
 
-| Parameter | Description | Default |
-| --------- | ----------- | :-----: |
-| max_threads | Maximum number of threads to use, `0` = unlimited. | `0` |
-| max_clusters | Maximum number of sockets/CCXs to use, `0` = unlimited. | `0` |
-| pin_threads | Pin threads? `-1` = auto, `0` = no, `1` = yes. | `-1` |
+```lua
+{
+  num_threads = 0,  -- Maximum number of threads to use. (0 = unlimited)
+  pin = -1,  -- Pin threads? (-1 = auto, 0 = no, 1 = yes)
+  skip_packages = 0,  -- Index of the first socket to use. (0 = unlimited)
+  max_packages = 0,  -- Maximum number of sockets to use. (0 = unlimited)
+  skip_clusters = 0,  -- Index of the first CCX to use. (0 = unlimited)
+  max_clusters = 0,  -- Maximum number of CCXs to use. (0 = unlimited)
+  skip_lps = 0,  -- Index of the first LP to use. (0 = unlimited)
+  max_lps = 0,  -- Maximum number of LPs to use. (0 = unlimited)
+}
+```
 
 #### cgemma.scheduler.cpu_topology
 
-**syntax:** `<table>clusters = sched:cpu_topology()`
+**syntax:** `<string>desc = sched:cpu_topology()`
 
 Query CPU topology.
 
