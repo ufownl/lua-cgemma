@@ -307,17 +307,6 @@ int stats(lua_State* L) {
   return 1;
 }
 
-template <class Config>
-struct image_tokens_factory {
-  gcpp::ImageTokens operator()() const {
-    if constexpr (Config::VitConfig::kSeqLen > 0) {
-      return gcpp::ImageTokens(Config::VitConfig::kSeqLen, Config::kModelDim);
-    } else {
-      return gcpp::ImageTokens();
-    }
-  }
-};
-
 }
 
 namespace cgemma {
