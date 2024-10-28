@@ -52,6 +52,7 @@ int create(lua_State* L) {
     auto img = new(ud) gcpp::Image;
     if (!img->ReadPPM(hwy::Span<const char>(buf, len))) {
       if (!img->ReadPPM(std::string(buf, len))) {
+        img->~Image();
         throw std::runtime_error("Failed to read PPM image");
       }
     }
