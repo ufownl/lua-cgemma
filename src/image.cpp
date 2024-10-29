@@ -48,15 +48,15 @@ int create(lua_State* L) {
   size_t len;
   auto buf = luaL_checklstring(L, 1, &len);
   try {
-    auto ud = lua_newuserdata(L, sizeof(gcpp::Image));
-    auto img = new(ud) gcpp::Image;
-    if (!img->ReadPPM(hwy::Span<const char>(buf, len))) {
-      if (!img->ReadPPM(std::string(buf, len))) {
-        img->~Image();
+    gcpp::Image img;
+    if (!img.ReadPPM(hwy::Span<const char>(buf, len))) {
+      if (!img.ReadPPM(std::string(buf, len))) {
         throw std::runtime_error("Failed to read PPM image");
       }
     }
-    img->Resize();
+    img.Resize();
+    auto ud = lua_newuserdata(L, sizeof(gcpp::Image));
+    new(ud) gcpp::Image(std::move(img));
     luaL_getmetatable(L, name);
     lua_setmetatable(L, -2);
     return 1;
