@@ -45,14 +45,32 @@ gcpp::Image* check(lua_State* L, int index) {
 }
 
 int create(lua_State* L) {
-  size_t len;
-  auto buf = luaL_checklstring(L, 1, &len);
+  auto nargs = lua_gettop(L);
   try {
     gcpp::Image img;
-    if (!img.ReadPPM(hwy::Span<const char>(buf, len))) {
-      if (!img.ReadPPM(std::string(buf, len))) {
-        throw std::runtime_error("Failed to read PPM image");
+    if (nargs < 2) {
+      size_t len;
+      auto buf = luaL_checklstring(L, 1, &len);
+      if (!img.ReadPPM(hwy::Span<const char>(buf, len))) {
+        if (!img.ReadPPM(std::string(buf, len))) {
+          throw std::runtime_error("Failed to read PPM image");
+        }
       }
+    } else {
+      auto width = luaL_checkinteger(L, 1);
+      auto height = luaL_checkinteger(L, 2);
+      luaL_checktype(L, 3, LUA_TTABLE);
+      std::vector<float> values;
+      values.reserve(width * height * 3);
+      lua_pushnil(L);
+      while (lua_next(L, 3)) {
+        values.push_back(luaL_checknumber(L, -1));
+        lua_pop(L, 1);
+      }
+      if (values.size() < width * height * 3) {
+        throw std::runtime_error("Not enough data");
+      }
+      img.Set(width, height, values.data());
     }
     img.Resize();
     auto ud = lua_newuserdata(L, sizeof(gcpp::Image));

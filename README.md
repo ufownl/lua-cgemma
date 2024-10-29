@@ -327,6 +327,10 @@ end
 
 Load image data from the given Lua string or a specific file (PPM format: P6, binary).
 
+**syntax:** `<cgemma.image>img, <string>err = cgemma.image(<integer>width, <integer>height, <table>values)`
+
+Create an image object with the given width, height, and pixel values.
+
 A successful call returns a `cgemma.image` object containing the image data. Otherwise, it returns `nil` and a string describing the error.
 
 #### cgemma.batch
