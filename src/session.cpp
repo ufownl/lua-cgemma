@@ -319,7 +319,7 @@ session::session(instance* inst, int argc, char* argv[])
   }
   const auto& cfg = inst->model().GetModelConfig();
   if (cfg.vit_seq_len > 0) {
-    img_ = gcpp::ImageTokens(cfg.vit_seq_len, cfg.model_dim);
+    img_ = gcpp::ImageTokens(gcpp::Extents2D(cfg.vit_seq_len, cfg.model_dim));
   }
   kv_cache_ = gcpp::KVCache::Create(cfg, args_.prefill_tbatch_size);
 }
