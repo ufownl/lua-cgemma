@@ -27,7 +27,6 @@ int info(lua_State* L) {
   auto now = std::time(nullptr);
   std::cout << "Date & Time              : " << std::put_time(std::localtime(&now), "%F %T") << std::endl;
   std::cout << "Max Sequence Length      : " << gcpp::kSeqLen << std::endl;
-  std::cout << "Top-K                    : " << gcpp::kTopK << std::endl;
   char cpu[100];
   if (hwy::platform::GetCpuString(cpu)) {
     std::cout << "CPU                      : " << cpu << std::endl;

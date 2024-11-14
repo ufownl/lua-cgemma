@@ -223,6 +223,7 @@ Available options and default values:
   prefill_tbatch = 64,  -- Prefill: max tokens per batch.
   decode_qbatch = 16,  -- Decode: max queries per batch.
   temperature = 1.0,  -- Temperature for top-K.
+  top_k = 1,  -- Number of top-K tokens to sample from.
 }
 ```
 
@@ -347,7 +348,7 @@ The stream function is the same as in [metatable(cgemma.session).call](#metatabl
 > 1. Each element in a batch must start with a session, followed by a string and an optional stream function, with a stream function means that the corresponding session will be in stream mode instead of normal mode;
 > 2. All sessions in a batch must be created by the same Gemma instance;
 > 3. Sessions in a batch must not be duplicated;
-> 4. Inference arguments of batch call: `max_generated_tokens`, `prefill_tbatch`, and `decode_qbatch` will be the minimum value of all sessions, and `temperature` will be the average value of all sessions.
+> 4. Inference arguments of batch call: `max_generated_tokens`, `prefill_tbatch`, and `decode_qbatch` will be the minimum value of all sessions, `temperature` will be the average value of all sessions, and `top_k` will be the maximum value of all sessions.
 
 #### cgemma.batch_result.stats
 

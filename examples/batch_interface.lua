@@ -22,7 +22,7 @@ end
 -- Create 3 chat sessions
 local sessions = {}
 for i = 1, 3 do
-  local session, err = gemma:session()
+  local session, err = gemma:session({top_k = 50})
   if not session then
     error("Opoos! "..err)
   end

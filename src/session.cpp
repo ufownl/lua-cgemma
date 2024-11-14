@@ -418,7 +418,8 @@ int session::create(lua_State* L) {
     "--max_generated_tokens",
     "--prefill_tbatch",
     "--decode_qbatch",
-    "--temperature"
+    "--temperature",
+    "--top_k"
   };
   constexpr const int n = sizeof(available_options) / sizeof(available_options[0]);
   int argc = 1;

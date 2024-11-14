@@ -31,7 +31,7 @@ if args.image then
 end
 
 -- Create a chat session
-local session, err = image and gemma:session(image) or gemma:session()
+local session, err = image and gemma:session(image, {top_k = 50}) or gemma:session({top_k = 50})
 if not session then
   error("Opoos! "..err)
 end

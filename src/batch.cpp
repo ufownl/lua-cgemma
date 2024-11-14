@@ -110,11 +110,13 @@ gcpp::RuntimeConfig parse_config(const std::vector<cgemma::session_context>& ses
   cfg.prefill_tbatch_size = 4096;
   cfg.decode_qbatch_size = 4096;
   cfg.temperature = 0.0f;
+  cfg.top_k = 1;
   for (const auto& ctx: sess_ctxs) {
     cfg.max_generated_tokens = std::min(cfg.max_generated_tokens, ctx.sess->args().max_generated_tokens);
     cfg.prefill_tbatch_size = std::min(cfg.prefill_tbatch_size, ctx.sess->args().prefill_tbatch_size);
     cfg.decode_qbatch_size = std::min(cfg.decode_qbatch_size, ctx.sess->args().decode_qbatch_size);
     cfg.temperature += ctx.sess->args().temperature;
+    cfg.top_k = std::max(cfg.top_k, ctx.sess->args().top_k);
   }
   cfg.temperature /= sess_ctxs.size();
   return cfg;
