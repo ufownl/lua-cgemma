@@ -32,26 +32,29 @@ sudo make install
 
 ### Synopsis
 
+First of all:
+
 ```lua
 -- Create a Gemma instance
 local gemma, err = require("cgemma").new({
   tokenizer = "/path/to/tokenizer.spm",
-  model = "2b-it",
-  weights = "/path/to/2b-it-sfp.sbs"
+  model = "gemma2-2b-it",
+  weights = "/path/to/2.0-2b-it-sfp.sbs"
 })
 if not gemma then
-  print("Opoos! ", err)
-  return
+  error("Opoos! "..err)
 end
+```
 
+Single call API example:
+
+```lua
 -- Create a chat session
-local session, seed = gemma:session()
+local session, err = gemma:session()
 if not session then
-  print("Opoos! ", seed)
-  return
+  error("Opoos! "..err)
 end
 
-print("Random seed of session: ", seed)
 while true do
   print("New conversation started")
 
@@ -65,14 +68,59 @@ while true do
     end
     local reply, err = session(text)
     if not reply then
-      print("Opoos! ", err)
-      return
+      error("Opoos! "..err)
     end
     print("reply: ", reply)
   end
 
   print("Exceed the maximum number of tokens")
   session:reset()
+end
+```
+
+Batch call API example:
+
+```lua
+-- Create 2 chat sessions
+local sessions = {}
+for i = 1, 2 do
+  local session, err = gemma:session()
+  if not session then
+    error("Opoos! "..err)
+  end
+  table.insert(sessions, session)
+end
+
+-- Run multiple queries using batch interface
+local turns = {
+  {sessions[1], "Tell me 1+1=?",          sessions[2], "Hello, world!"},
+  {sessions[1], "Write it using Python.", sessions[2], "Write what I said in uppercase."}
+}
+for i, queries in ipairs(turns) do
+  print(string.format("Turn %d:\n", i))
+
+  -- Make a batch call
+  local result, err = require("cgemma").batch(unpack(queries))
+  if not result then
+    error("Opoos! "..err)
+  end
+
+  -- Display the result of this batch call
+  local idx = 1
+  for j = 1, #queries do
+    if type(queries[j]) == "string" then
+      print(string.format("Q%d: %s\n", idx, queries[j]))
+      local resp, err = result(queries[j - 1])
+      if resp then
+        print(resp)
+      else
+        error("Opoos! "..err)
+      end
+      idx = idx + 1
+    end
+  end
+
+  print()
 end
 ```
 
@@ -83,6 +131,35 @@ end
 **syntax:** `cgemma.info()`
 
 Show information of cgemma module.
+
+#### cgemma.scheduler
+
+**syntax:** `<cgemma.scheduler>sched, <string>err = cgemma.scheduler([<table>options])`
+
+Create a scheduler instance.
+
+A successful call returns a scheduler instance. Otherwise, it returns `nil` and a string describing the error.
+
+Available options and default values:
+
+```lua
+{
+  num_threads = 0,  -- Maximum number of threads to use. (0 = unlimited)
+  pin = -1,  -- Pin threads? (-1 = auto, 0 = no, 1 = yes)
+  skip_packages = 0,  -- Index of the first socket to use. (0 = unlimited)
+  max_packages = 0,  -- Maximum number of sockets to use. (0 = unlimited)
+  skip_clusters = 0,  -- Index of the first CCX to use. (0 = unlimited)
+  max_clusters = 0,  -- Maximum number of CCXs to use. (0 = unlimited)
+  skip_lps = 0,  -- Index of the first LP to use. (0 = unlimited)
+  max_lps = 0,  -- Maximum number of LPs to use. (0 = unlimited)
+}
+```
+
+#### cgemma.scheduler.cpu_topology
+
+**syntax:** `<string>desc = sched:cpu_topology()`
+
+Query CPU topology.
 
 #### cgemma.new
 
@@ -97,46 +174,32 @@ Available options:
 ```lua
 {
   tokenizer = "/path/to/tokenizer.spm",  -- Path of tokenizer model file. (required)
-  model = "2b-it",  -- Model type:
-                    -- 2b-it (Gemma 2B parameters, instruction-tuned),
-                    -- 2b-pt (Gemma 2B parameters, pretrained),
-                    -- 7b-it (Gemma 7B parameters, instruction-tuned),
-                    -- 7b-pt (Gemma 7B parameters, pretrained),
-                    -- 9b-it (Gemma2 9B parameters, instruction-tuned),
-                    -- 9b-pt (Gemma2 9B parameters, pretrained),
-                    -- 27b-it (Gemma2 27B parameters, instruction-tuned),
-                    -- 27b-pt (Gemma2 27B parameters, pretrained),
-                    -- gr2b-it (Griffin 2B parameters, instruction-tuned),
-                    -- gr2b-pt (Griffin 2B parameters, pretrained),
-                    -- gemma2-2b-it (Gemma2 2.6B parameters, instruction-tuned),
-                    -- gemma2-2b-pt (Gemma2 2.6B parameters, pretrained).
-                    -- (required)
-  weights = "/path/to/2b-it-sfp.sbs",  -- Path of model weights file. (required)
+  model = "gemma2-2b-it",  -- Model type:
+                           -- 2b-it (Gemma 2B parameters, instruction-tuned),
+                           -- 2b-pt (Gemma 2B parameters, pretrained),
+                           -- 7b-it (Gemma 7B parameters, instruction-tuned),
+                           -- 7b-pt (Gemma 7B parameters, pretrained),
+                           -- gr2b-it (Griffin 2B parameters, instruction-tuned),
+                           -- gr2b-pt (Griffin 2B parameters, pretrained),
+                           -- gemma2-2b-it (Gemma2 2B parameters, instruction-tuned),
+                           -- gemma2-2b-pt (Gemma2 2B parameters, pretrained).
+                           -- 9b-it (Gemma2 9B parameters, instruction-tuned),
+                           -- 9b-pt (Gemma2 9B parameters, pretrained),
+                           -- 27b-it (Gemma2 27B parameters, instruction-tuned),
+                           -- 27b-pt (Gemma2 27B parameters, pretrained),
+                           -- paligemma-224 (PaliGemma 224*224),
+                           -- (required)
+  weights = "/path/to/2.0-2b-it-sfp.sbs",  -- Path of model weights file. (required)
   weight_type = "sfp",  -- Weight type:
                         -- sfp (8-bit FP, default)
                         -- f32 (float)
                         -- bf16 (bfloat16)
+  seed = 42,  -- Random seed. (default is random setting)
   scheduler = sched_inst,  -- Instance of scheduler, if not provided a default
                            -- scheduler will be attached.
   disabled_words = {...},  -- Words you don't want to generate.
 }
 ```
-
-#### cgemma.scheduler
-
-**syntax:** `<cgemma.scheduler>sched, <string>err = cgemma.scheduler([<number>num_threads])`
-
-Create a scheduler instance.
-
-A successful call returns a scheduler instance. Otherwise, it returns `nil` and a string describing the error.
-
-The only parameter `num_threads` indicates the number of threads in the internal thread pool. If not provided or `num_threads <= 0`, it will create a default scheduler with the number of threads depending on the concurrent threads supported by the implementation.
-
-#### cgemma.scheduler.pin_threads
-
-**syntax:** `sched:pin_threads()`
-
-Pin the scheduler's threads to logical processors.
 
 #### cgemma.instance.disabled_tokens
 
@@ -146,22 +209,21 @@ Query the disabled tokens of a Gemma instance.
 
 #### cgemma.instance.session
 
-**syntax:** `<cgemma.session>sess, <number or string>seed = inst:session([<table>options])`
+**syntax:** `<cgemma.session>sess, <string>err = inst:session([[<cgemma.image>image, ]<table>options])`
 
 Create a chat session.
 
-A successful call returns the session and its random seed. Otherwise, it returns `nil` and a string describing the error.
+A successful call returns the session. Otherwise, it returns `nil` and a string describing the error.
 
 Available options and default values:
 
 ```lua
 {
-  max_tokens = 3072,  -- Maximum number of tokens in prompt + generation.
   max_generated_tokens = 2048,  -- Maximum number of tokens to generate.
   prefill_tbatch = 64,  -- Prefill: max tokens per batch.
   decode_qbatch = 16,  -- Decode: max queries per batch.
   temperature = 1.0,  -- Temperature for top-K.
-  seed = 42,  -- Random seed. (default is random setting)
+  top_k = 1,  -- Number of top-K tokens to sample from.
 }
 ```
 
@@ -219,10 +281,13 @@ Example of statistics:
 
 ```lua
 {
-  prefill_tokens_per_second = 34.950446398036,
-  generate_tokens_per_second = 9.0089134969039,
-  time_to_first_token = 0.8253711364232,
-  tokens_generated = 85
+  prefill_duration = 1.6746909224894,
+  prefill_tokens = 26,
+  prefill_tokens_per_second = 15.525252839701,
+  time_to_first_token = 1.9843131969683,
+  generate_duration = 38.562645539409,
+  tokens_generated = 212,
+  generate_tokens_per_second = 5.4975481332926
 }
 ```
 
@@ -256,6 +321,50 @@ function stream(token, pos, prompt_size)
   return true
 end
 ```
+
+#### cgemma.image
+
+**syntax:** `<cgemma.image>img, <string>err = cgemma.image(<string>data_or_path)`
+
+Load image data from the given Lua string or a specific file (PPM format: P6, binary).
+
+**syntax:** `<cgemma.image>img, <string>err = cgemma.image(<integer>width, <integer>height, <table>values)`
+
+Create an image object with the given width, height, and pixel values.
+
+A successful call returns a `cgemma.image` object containing the image data. Otherwise, it returns `nil` and a string describing the error.
+
+#### cgemma.batch
+
+**syntax:** `<cgemma.batch_result>result, <string>err = cgemma.batch(<cgemma.session>sess, <string>text[, <function>stream], ...)`
+
+Generate replies for multiple queries via the batch interface.
+
+A successful call returns a `cgemma.batch_result` object. Otherwise, it returns `nil` and a string describing the error.
+
+The stream function is the same as in [metatable(cgemma.session).call](#metatablecgemmasession__call).
+
+> [!NOTE]
+> 1. Each element in a batch must start with a session, followed by a string and an optional stream function, with a stream function means that the corresponding session will be in stream mode instead of normal mode;
+> 2. All sessions in a batch must be created by the same Gemma instance;
+> 3. Sessions in a batch must not be duplicated;
+> 4. Inference arguments of batch call: `max_generated_tokens`, `prefill_tbatch`, and `decode_qbatch` will be the minimum value of all sessions, `temperature` will be the average value of all sessions, and `top_k` will be the maximum value of all sessions.
+
+#### cgemma.batch_result.stats
+
+**syntax:** `<table>statistics = result:stats()`
+
+Get statistics for the batch call that returned the current result.
+
+The statistics fields are the same as in [cgemma.session.stats](#cgemmasessionstats).
+
+#### metatable(cgemma.batch_result).call
+
+**syntax:** `<string or boolean>reply, <string>err = result(<cgemma.session>sess)`
+
+Query the reply corresponding to the session in the result.
+
+A successful call returns the content of the reply (normal mode) or `true` (stream mode). Otherwise, it returns `nil` and a string describing the error.
 
 ## License
 

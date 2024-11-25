@@ -2,16 +2,18 @@
 #define CGEMMA_SCHEDULER_HPP
 
 #include <lua.hpp>
-#include <hwy/contrib/thread_pool/thread_pool.h>
+#include <util/app.h>
+#include <util/threading.h>
+#include <memory>
 
 namespace cgemma {
 
 class scheduler {
 public:
   scheduler();
-  explicit scheduler(size_t num_threads);
+  scheduler(int argc, char* argv[]);
 
-  hwy::ThreadPool& pool() { return pool_; }
+  gcpp::NestedPools& pools() { return *pools_; }
 
   static void declare(lua_State* L);
   static scheduler* to(lua_State* L, int index);
@@ -19,7 +21,8 @@ public:
   static int create(lua_State* L);
 
 private:
-  hwy::ThreadPool pool_;
+  gcpp::AppArgs args_;
+  std::unique_ptr<gcpp::NestedPools> pools_;
 };
 
 }

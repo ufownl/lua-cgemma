@@ -42,6 +42,7 @@ build/
 # Model files
 *.spm
 *.sbs
+*.model
 
 # Binary data files
 *.bin

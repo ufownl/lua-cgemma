@@ -1,15 +1,14 @@
 #include "scheduler.hpp"
 #include <util/app.h>
-#include <algorithm>
-#include <thread>
 
 namespace {
 
 constexpr const char name[] = "cgemma.scheduler";
 
-int pin_threads(lua_State* L) {
-  gcpp::PinWorkersToCores(cgemma::scheduler::check(L, 1)->pool());
-  return 0;
+int cpu_topology(lua_State* L) {
+  auto sched = cgemma::scheduler::check(L, 1);
+  lua_pushstring(L, sched->pools().TopologyString());
+  return 1;
 }
 
 int destroy(lua_State* L) {
@@ -17,18 +16,26 @@ int destroy(lua_State* L) {
   return 0;
 }
 
+std::unique_ptr<gcpp::NestedPools> make_pools(const gcpp::AppArgs& args) {
+  return std::make_unique<gcpp::NestedPools>(
+    args.max_threads, args.pin,
+    gcpp::BoundedSlice(args.skip_packages, args.max_packages),
+    gcpp::BoundedSlice(args.skip_clusters, args.max_clusters),
+    gcpp::BoundedSlice(args.skip_lps, args.max_lps)
+  );
+}
+
 }
 
 namespace cgemma {
 
-scheduler::scheduler()
-  : pool_(std::min(static_cast<size_t>(std::thread::hardware_concurrency()), gcpp::kMaxThreads)) {
-  // nop
+scheduler::scheduler() {
+  pools_ = make_pools(args_);
 }
 
-scheduler::scheduler(size_t num_threads)
-  : pool_(std::min(num_threads, gcpp::kMaxThreads)) {
-  // nop
+scheduler::scheduler(int args, char* argv[])
+  : args_(args, argv) {
+  pools_ = make_pools(args_);
 }
 
 void scheduler::declare(lua_State* L) {
@@ -37,7 +44,7 @@ void scheduler::declare(lua_State* L) {
     {nullptr, nullptr}
   };
   constexpr const luaL_Reg methods[] = {
-    {"pin_threads", pin_threads},
+    {"cpu_topology", cpu_topology},
     {nullptr, nullptr}
   };
   luaL_newmetatable(L, name);
@@ -62,14 +69,32 @@ scheduler* scheduler::check(lua_State* L, int index) {
 }
 
 int scheduler::create(lua_State* L) {
-  auto num_threads = lua_tointeger(L, 1);
+  auto nargs = lua_gettop(L);
+  constexpr const char* available_options[] = {
+    "--num_threads", "--pin",
+    "--skip_packages", "--max_packages",
+    "--skip_clusters", "--max_clusters",
+    "--skip_lps", "--max_lps",
+  };
+  constexpr const int n = sizeof(available_options) / sizeof(available_options[0]);
+  int argc = 1;
+  char* argv[n * 2 + 1] = {const_cast<char*>("lua-cgemma")};
+  if (nargs > 0) {
+    luaL_checktype(L, 1, LUA_TTABLE);
+    for (auto opt: available_options) {
+      auto k = opt + 2;
+      lua_getfield(L, 1, k);
+      auto v = lua_tostring(L, -1);
+      if (v) {
+        argv[argc++] = const_cast<char*>(opt);
+        argv[argc++] = const_cast<char*>(v);
+      }
+      lua_pop(L, 1);
+    }
+  }
   auto ud = lua_newuserdata(L, sizeof(scheduler));
   try {
-    if (num_threads > 0) {
-      new(ud) scheduler(num_threads);
-    } else {
-      new(ud) scheduler();
-    }
+    new(ud) scheduler(argc, argv);
     luaL_getmetatable(L, name);
     lua_setmetatable(L, -2);
     return 1;

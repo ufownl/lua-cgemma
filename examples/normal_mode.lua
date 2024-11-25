@@ -4,6 +4,7 @@ if args.help then
     "Normal mode chatbot demo.",
     "resty normal_mode.lua [options]"
   )
+  print("  --image: Path of image file (PPM format: P6, binary).")
   print("  --kv_cache: Path of KV cache file.")
   print("  --stats: Print statistics at end of turn.")
   return
@@ -12,23 +13,29 @@ end
 -- Create a Gemma instance
 local gemma, err = require("cgemma").new({
   tokenizer = args.tokenizer or "tokenizer.spm",
-  model = args.model or "2b-it",
-  weights = args.weights or "2b-it-sfp.sbs",
+  model = args.model or "gemma2-2b-it",
+  weights = args.weights or "2.0-2b-it-sfp.sbs",
   weight_type = args.weight_type
 })
 if not gemma then
-  print("Opoos! ", err)
-  return
+  error("Opoos! "..err)
+end
+
+local image, err
+if args.image then
+  -- Load image data
+  image, err = require("cgemma").image(args.image)
+  if not image then
+    error("Opoos! "..err)
+  end
 end
 
 -- Create a chat session
-local session, seed = gemma:session()
+local session, err = image and gemma:session(image, {top_k = 50}) or gemma:session({top_k = 50})
 if not session then
-  print("Opoos! ", seed)
-  return
+  error("Opoos! "..err)
 end
 
-print("Random seed of session: ", seed)
 while true do
   if args.kv_cache then
     -- Restore the previous session
@@ -52,8 +59,7 @@ while true do
         -- Dump the current session
         local ok, err = session:dump(args.kv_cache)
         if not ok then
-          print("Opoos! ", err)
-          return
+          error("Opoos! "..err)
         end
       end
       print("Done")
@@ -61,8 +67,7 @@ while true do
     end
     local reply, err = session(text)
     if not reply then
-      print("Opoos! ", err)
-      return
+      error("Opoos! "..err)
     end
     print("reply: ", reply)
 

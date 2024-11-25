@@ -51,7 +51,10 @@
         <el-empty v-else />
       </el-card>
       <p>
-        <el-input v-model="text" placeholder="Enter your message here" :disabled="!ws" @keyup.enter.native="sendText">
+        <el-popover ref="suggestions" placement="top-end" trigger="focus" title="Suggestions" :disabled="!suggestions">
+          <el-button v-for="(sgt, idx) in suggestions" :key="'sgt_' + idx" type="text" @click="text=sgt">{{ sgt }}</el-button>
+        </el-popover>
+        <el-input v-model="text" v-popover:suggestions placeholder="Enter your message here" :disabled="!ws" @keyup.enter.native="sendText">
           <el-button slot="append" :disabled="!text" @click="sendText">Send</el-button>
         </el-input>
       </p>
@@ -84,6 +87,11 @@
         clientWidth: 0,
         ws: null,
         messages: [{role: 'system', text: 'Loading model...'}],
+        suggestions: [
+          'What is lua-cgemma?',
+          'Who developed lua-cgemma?',
+          'How can I install lua-cgemma?'
+        ],
         text: ''
       }
     },
@@ -143,6 +151,7 @@
           }
           this.ws.send(JSON.stringify(msg))
           this.messages.push(msg)
+          this.suggestions = null
           this.text = ''
           this.autoScroll()
         }

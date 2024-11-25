@@ -32,17 +32,21 @@ int disabled_tokens(lua_State* L) {
 
 namespace cgemma {
 
-instance::instance(int argc, char* argv[], scheduler* s)
+instance::instance(int argc, char* argv[], unsigned int seed, scheduler* sched)
   : args_(argc, argv)
-  , sched_(s) {
+  , rnd_(seed) {
   if (auto err = args_.Validate()) {
     throw std::invalid_argument(err);
   }
-  if (!s) {
+  if (!sched) {
     default_sched_ = std::make_unique<scheduler>();
-    sched_ = default_sched_.get();
+    sched = default_sched_.get();
   }
-  model_ = std::make_unique<gcpp::Gemma>(args_.tokenizer, args_.weights, args_.Info(), sched_->pool());
+  model_ = std::make_unique<gcpp::Gemma>(args_.tokenizer, args_.weights, args_.Info(), sched->pools());
+}
+
+size_t instance::max_tokens() const {
+  return model_->GetModelConfig().seq_len;
 }
 
 void instance::declare(lua_State* L) {
@@ -100,12 +104,21 @@ int instance::create(lua_State* L) {
     }
     lua_pop(L, 1);
   }
-  lua_getfield(L, 1, "scheduler");
-  auto s = scheduler::to(L, -1);
-  lua_pop(L, 1);
-  auto ud = lua_newuserdata(L, sizeof(instance));
   try {
-    auto inst = new(ud) instance(argc, argv, s);
+    unsigned int seed;
+    lua_getfield(L, 1, "seed");
+    if (lua_isnumber(L, -1)) {
+      seed = lua_tointeger(L, -1);
+    } else {
+      std::random_device rd;
+      seed = rd();
+    }
+    lua_pop(L, 1);
+    lua_getfield(L, 1, "scheduler");
+    auto sched = scheduler::to(L, -1);
+    lua_pop(L, 1);
+    auto ud = lua_newuserdata(L, sizeof(instance));
+    auto inst = new(ud) instance(argc, argv, seed, sched);
     lua_getfield(L, 1, "disabled_words");
     if (lua_istable(L, -1)) {
       lua_pushnil(L);
