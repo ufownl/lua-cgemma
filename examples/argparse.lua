@@ -31,6 +31,8 @@ function _M.help(description, usage)
   print("    9b-it = Gemma2 9B parameters, instruction-tuned")
   print("    27b-it = Gemma2 27B parameters, instruction-tuned")
   print("    paligemma-224 = PaliGemma 224*224")
+  print("    paligemma2-3b-224 = PaliGemma2 3B 224*224")
+  print("    paligemma2-10b-224 = PaliGemma2 10B 224*224")
   print("  --weights: Path of model weights file. (default: 2.0-2b-it-sfp.sbs)")
   print("  --weight_type: Weight type (default: sfp)")
 end
