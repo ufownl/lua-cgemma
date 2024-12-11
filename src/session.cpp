@@ -412,7 +412,7 @@ session* session::check(lua_State* L, int index) {
 int session::create(lua_State* L) {
   auto nargs = lua_gettop(L);
   auto inst = instance::check(L, 1);
-  const gcpp::Image* img = image::to(L, 2);
+  gcpp::Image* img = image::to(L, 2);
   auto opt_idx = img ? 3 : 2;
   constexpr const char* available_options[] = {
     "--max_generated_tokens",
@@ -441,6 +441,8 @@ int session::create(lua_State* L) {
   try {
     auto sess = new(ud) session(inst, argc, argv);
     if (sess->image_tokens() && img) {
+      auto size = sess->inst()->model().GetModelConfig().image_size;
+      img->Resize(size, size);
       sess->embed(*img);
     }
     luaL_getmetatable(L, name);

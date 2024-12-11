@@ -72,7 +72,6 @@ int create(lua_State* L) {
       }
       img.Set(width, height, values.data());
     }
-    img.Resize();
     auto ud = lua_newuserdata(L, sizeof(gcpp::Image));
     new(ud) gcpp::Image(std::move(img));
     luaL_getmetatable(L, name);
