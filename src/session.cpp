@@ -52,7 +52,7 @@ int stream_mode(lua_State* L, cgemma::session* sess, const std::vector<int>& pro
     lua_pushvalue(L, 3);
     if (pos - start_pos < prompt_size) {
       lua_pushnil(L);
-    } else if (token == gcpp::EOS_ID || sess->inst()->model().Info().training == gcpp::ModelTraining::GEMMA_IT && token == cgemma::EOT_ID) {
+    } else if (token == gcpp::EOS_ID || sess->inst()->model().Info().wrapping == gcpp::PromptWrapping::GEMMA_IT && token == cgemma::EOT_ID) {
       eot = true;
       lua_pushnil(L);
     } else {
@@ -92,7 +92,7 @@ int normal_mode(lua_State* L, cgemma::session* sess, const std::vector<int>& pro
   output.reserve(sess->args().max_generated_tokens);
   generate(sess, prompt, [&](size_t, size_t pos, int token, float) {
     if (pos - start_pos >= prompt_size) {
-      if (token == gcpp::EOS_ID || sess->inst()->model().Info().training == gcpp::ModelTraining::GEMMA_IT && token == cgemma::EOT_ID) {
+      if (token == gcpp::EOS_ID || sess->inst()->model().Info().wrapping == gcpp::PromptWrapping::GEMMA_IT && token == cgemma::EOT_ID) {
         return false;
       }
       output.push_back(token);
@@ -329,7 +329,7 @@ std::vector<int> session::tokenize(const char* text, size_t len) const {
   constexpr const char model_sot[] = "<start_of_turn>model\n";
   constexpr const char eot[] = "<end_of_turn>\n";
   std::string s;
-  if (inst_->model().Info().training == gcpp::ModelTraining::GEMMA_IT) {
+  if (inst_->model().Info().wrapping == gcpp::PromptWrapping::GEMMA_IT) {
     s.reserve(sizeof(eot) - 1
             + sizeof(user_sot) - 1
             + len
@@ -359,7 +359,7 @@ std::vector<int> session::tokenize(const char* text, size_t len) const {
   if (pos_ == 0) {
     prompt.emplace(prompt.cbegin(), gcpp::BOS_ID);
   }
-  if (inst_->model().Info().training == gcpp::ModelTraining::PALIGEMMA) {
+  if (inst_->model().Info().wrapping == gcpp::PromptWrapping::PALIGEMMA) {
     std::vector<int> sep;
     if (!inst_->model().Tokenizer().Encode("\n", &sep)) {
       throw std::runtime_error("Tokenizer encoding failed. (session::tokenize)");
