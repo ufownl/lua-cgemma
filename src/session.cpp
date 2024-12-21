@@ -155,7 +155,7 @@ public:
   kv_cache_size_store(const gcpp::ModelConfig& cfg, size_t pos) {
     store_[static_cast<size_t>(kv_cache_field::kv_cache)] = cfg.CachePosSize() * pos * sizeof(std::declval<gcpp::KVCache>().kv_cache[0]);
     auto griffin_layers = cfg.NumLayersOfType(gcpp::LayerAttentionType::kGriffinRecurrentBlock);
-    size_t conv1d_width = 0;
+    decltype(std::declval<gcpp::LayerConfig>().conv1d_width) conv1d_width = 0;
     for (const auto& layer_cfg: cfg.layer_configs) {
       conv1d_width = std::max(conv1d_width, layer_cfg.conv1d_width);
     }
