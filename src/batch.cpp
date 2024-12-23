@@ -14,7 +14,7 @@ public:
     kv_caches_.reserve(sess_ctxs.size());
     for (auto& ctx: sess_ctxs) {
       prompts_.emplace_back(ctx.prompt.data(), ctx.prompt.size());
-      start_pos_.emplace_back(ctx.start_pos > 0 ? ctx.start_pos + 1 : 0);
+      start_pos_.emplace_back(ctx.start_pos);
       kv_caches_.emplace_back(std::move(ctx.sess->kv_cache()));
     }
   }

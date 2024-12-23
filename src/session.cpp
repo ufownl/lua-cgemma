@@ -24,16 +24,15 @@ void generate(cgemma::session* sess, const std::vector<int>& prompt, const gcpp:
     };
   }
   cfg.image_tokens = sess->image_tokens();
-  size_t start_pos = sess->pos() > 0 ? sess->pos() + 1 : 0;
   if (cfg.image_tokens) {
     std::vector<int> image_prompt;
     image_prompt.reserve(cfg.image_tokens->BatchSize() + prompt.size());
     image_prompt.resize(cfg.image_tokens->BatchSize(), cgemma::PAD_ID);
     image_prompt.insert(image_prompt.cend(), prompt.cbegin(), prompt.cend());
     cfg.prefill_tbatch_size = image_prompt.size();
-    sess->inst()->model().Generate(cfg, gcpp::PromptTokens(image_prompt.data(), image_prompt.size()), start_pos, image_prompt.size(), sess->kv_cache(), sess->timing_info());
+    sess->inst()->model().Generate(cfg, gcpp::PromptTokens(image_prompt.data(), image_prompt.size()), sess->pos(), image_prompt.size(), sess->kv_cache(), sess->timing_info());
   } else {
-    sess->inst()->model().Generate(cfg, gcpp::PromptTokens(prompt.data(), prompt.size()), start_pos, sess->kv_cache(), sess->timing_info());
+    sess->inst()->model().Generate(cfg, gcpp::PromptTokens(prompt.data(), prompt.size()), sess->pos(), sess->kv_cache(), sess->timing_info());
   }
 }
 
