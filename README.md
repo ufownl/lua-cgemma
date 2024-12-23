@@ -188,8 +188,11 @@ Available options:
                            -- 27b-it (Gemma2 27B parameters, instruction-tuned),
                            -- 27b-pt (Gemma2 27B parameters, pretrained),
                            -- paligemma-224 (PaliGemma 224*224),
+                           -- paligemma-448 (PaliGemma 448*448),
                            -- paligemma2-3b-224 (PaliGemma2 3B 224*224),
+                           -- paligemma2-3b-448 (PaliGemma2 3B 448*448),
                            -- paligemma2-10b-224 (PaliGemma2 10B 224*224),
+                           -- paligemma2-10b-448 (PaliGemma2 10B 448*448),
                            -- (required)
   weights = "/path/to/2.0-2b-it-sfp.sbs",  -- Path of model weights file. (required)
   weight_type = "sfp",  -- Weight type:
