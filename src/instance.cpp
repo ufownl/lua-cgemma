@@ -45,10 +45,6 @@ instance::instance(int argc, char* argv[], unsigned int seed, scheduler* sched)
   model_ = std::make_unique<gcpp::Gemma>(args_.tokenizer, args_.weights, args_.Info(), sched->pools());
 }
 
-size_t instance::max_tokens() const {
-  return model_->GetModelConfig().seq_len;
-}
-
 void instance::declare(lua_State* L) {
   constexpr const luaL_Reg metatable[] = {
     {"__gc", destroy},
