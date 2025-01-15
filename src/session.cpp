@@ -317,8 +317,8 @@ session::session(instance* inst, int argc, char* argv[])
     throw std::invalid_argument(err);
   }
   const auto& cfg = inst->model().GetModelConfig();
-  if (cfg.vit_seq_len > 0) {
-    img_ = gcpp::ImageTokens(gcpp::Extents2D(cfg.vit_seq_len, cfg.model_dim));
+  if (cfg.vit_config.seq_len > 0) {
+    img_ = gcpp::ImageTokens(gcpp::Extents2D(cfg.vit_config.seq_len, cfg.model_dim));
   }
   kv_cache_ = gcpp::KVCache::Create(cfg, args_.prefill_tbatch_size);
 }
@@ -440,7 +440,7 @@ int session::create(lua_State* L) {
   try {
     auto sess = new(ud) session(inst, argc, argv);
     if (sess->image_tokens() && img) {
-      auto size = sess->inst()->model().GetModelConfig().image_size;
+      auto size = sess->inst()->model().GetModelConfig().vit_config.image_size;
       img->Resize(size, size);
       sess->embed(*img);
     }
