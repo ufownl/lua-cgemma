@@ -205,6 +205,9 @@ Available options:
 }
 ```
 
+> [!NOTE]
+> If the weights file is not in the new single-file format, then `tokenizer` and `model` options are required.
+
 #### cgemma.instance.disabled_tokens
 
 **syntax:** `<table>tokens = inst:disabled_tokens()`
