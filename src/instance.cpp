@@ -42,7 +42,11 @@ instance::instance(int argc, char* argv[], unsigned int seed, scheduler* sched)
     default_sched_ = std::make_unique<scheduler>();
     sched = default_sched_.get();
   }
-  model_ = std::make_unique<gcpp::Gemma>(args_.tokenizer, args_.weights, args_.Info(), sched->pools());
+  if (args_.Info().weight == gcpp::Type::kUnknown || args_.Info().model == gcpp::Model::UNKNOWN || args_.tokenizer.path.empty()) {
+    model_ = std::make_unique<gcpp::Gemma>(args_.weights, sched->pools());
+  } else {
+    model_ = std::make_unique<gcpp::Gemma>(args_.tokenizer, args_.weights, args_.Info(), sched->pools());
+  }
 }
 
 void instance::declare(lua_State* L) {
@@ -73,9 +77,9 @@ instance* instance::check(lua_State* L, int index) {
 
 int instance::create(lua_State* L) {
   luaL_checktype(L, 1, LUA_TTABLE);
-  constexpr const char* required_options[] = {"--tokenizer", "--model", "--weights"};
+  constexpr const char* required_options[] = {"--weights"};
   constexpr const int n = sizeof(required_options) / sizeof(required_options[0]);
-  constexpr const char* optional_options[] = {"--weight_type"};
+  constexpr const char* optional_options[] = {"--tokenizer", "--model", "--weight_type"};
   constexpr const int m = sizeof(optional_options) / sizeof(optional_options[0]);
   char* argv[(n + m) * 2 + 1] = {const_cast<char*>("lua-cgemma")};
   for (int i = 0; i < n; ++i) {

@@ -173,7 +173,7 @@ Available options:
 
 ```lua
 {
-  tokenizer = "/path/to/tokenizer.spm",  -- Path of tokenizer model file. (required)
+  tokenizer = "/path/to/tokenizer.spm",  -- Path of tokenizer model file.
   model = "gemma2-2b-it",  -- Model type:
                            -- 2b-it (Gemma 2B parameters, instruction-tuned),
                            -- 2b-pt (Gemma 2B parameters, pretrained),
@@ -193,7 +193,6 @@ Available options:
                            -- paligemma2-3b-448 (PaliGemma2 3B 448*448),
                            -- paligemma2-10b-224 (PaliGemma2 10B 224*224),
                            -- paligemma2-10b-448 (PaliGemma2 10B 448*448),
-                           -- (required)
   weights = "/path/to/2.0-2b-it-sfp.sbs",  -- Path of model weights file. (required)
   weight_type = "sfp",  -- Weight type:
                         -- sfp (8-bit FP, default)
