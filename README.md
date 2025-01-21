@@ -373,6 +373,28 @@ Query the reply corresponding to the session in the result.
 
 A successful call returns the content of the reply (normal mode) or `true` (stream mode). Otherwise, it returns `nil` and a string describing the error.
 
+### Migrating to single-file weights format
+
+The weights file now has a new format: a single file that allows the tokenizer and the model type to be contained directly. A tool to migrate from multi-file to single-file is available.
+
+```bash
+gemma.migrate_weights \
+  --tokenizer /path/to/tokenizer.spm --weights /path/to/2.0-2b-it-sfp.sbs \
+  --model gemma2-2b-it --output_weights /path/to/2.0-2b-it-sfp-single.sbs
+```
+
+After migration, you can create a Gemma instance using the new weights file like this:
+
+```lua
+-- Create a Gemma instance
+local gemma, err = require("cgemma").new({
+  weights = "/path/to/2.0-2b-it-sfp-single.sbs"
+})
+if not gemma then
+  error("Opoos! "..err)
+end
+```
+
 ## License
 
 BSD-3-Clause license. See [LICENSE](https://github.com/ufownl/lua-cgemma?tab=BSD-3-Clause-1-ov-file) for details.
