@@ -34,6 +34,7 @@ if args.help then
   print("  --weights: Path of model weights file. (default: 2.0-2b-it-sfp.sbs)")
   print("  --weight_type: Weight type (default: sfp)")
   print("  --prefill_tbatch: Maximum batch size during prefill phase (default: 64)")
+  print("  --kv_cache: Path of KV cache file.")
   print("  --output: Path of output file. (default: dump.bin)")
   print("  --num_threads: Maximum number of threads to use, 0 = unlimited. (default: 0)")
   print("  --pin: Pin threads? -1 = auto, 0 = no, 1 = yes. (default: -1)")
@@ -59,8 +60,7 @@ local sched, err = require("cgemma").scheduler({
   max_lps = args.max_lps
 })
 if not sched then
-  print("Opoos! ", err)
-  return
+  error("Opoos! "..err)
 end
 
 print("Loading model ...")
@@ -73,20 +73,26 @@ local gemma, err = require("cgemma").new({
   scheduler = sched
 })
 if not gemma then
-  print("Opoos! ", err)
-  return
+  error("Opoos! "..err)
 end
 
 -- Create a session
-local session, seed = gemma:session({
+local session, err = gemma:session({
   max_generated_tokens = 1,
   prefill_tbatch = args.prefill_tbatch
 })
 if not session then
-  print("Opoos! ", seed)
-  return
+  error("Opoos! "..err)
 end
-print("Random seed of session: ", seed)
+if args.kv_cache then
+  -- Restore the previous session
+  local ok, err = session:load(args.kv_cache)
+  if ok then
+    print("Previous session restored")
+  else
+    print("Opoos! "..err)
+  end
+end
 
 print("Reading prompt ...")
 local prompt = io.read("*a")
@@ -99,16 +105,14 @@ local ok, err = session(prompt, function(token, pos, prompt_size)
   return true
 end)
 if not ok then
-  print("Opoos! ", err)
-  return
+  error("Opoos! "..err)
 end
 print()
 
 -- Dump the current session to "dump.bin"
 local ok, err = session:dump(args.output or "dump.bin")
 if not ok then
-  print("Opoos! ", err)
-  return
+  error("Opoos! "..err)
 end
 print(string.format("Done! Session states of the prompt have been dumped to \"%s\"", args.output or "dump.bin"))
 if args.stats then
