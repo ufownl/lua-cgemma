@@ -1,5 +1,5 @@
 #include "scheduler.hpp"
-#include <util/app.h>
+#include <util/allocator.h>
 
 namespace {
 
@@ -17,12 +17,14 @@ int destroy(lua_State* L) {
 }
 
 std::unique_ptr<gcpp::NestedPools> make_pools(const gcpp::AppArgs& args) {
-  return std::make_unique<gcpp::NestedPools>(
+  auto pools = std::make_unique<gcpp::NestedPools>(
     args.max_threads, args.pin,
     gcpp::BoundedSlice(args.skip_packages, args.max_packages),
     gcpp::BoundedSlice(args.skip_clusters, args.max_clusters),
     gcpp::BoundedSlice(args.skip_lps, args.max_lps)
   );
+  gcpp::Allocator::Init(pools->Topology());
+  return pools;
 }
 
 }
