@@ -33,7 +33,7 @@ if args.help then
   print("    27b-pt = Gemma2 27B parameters, pretrained")
   print("  --weights: Path of model weights file. (default: 2.0-2b-it-sfp.sbs)")
   print("  --weight_type: Weight type (default: sfp)")
-  print("  --prefill_tbatch: Maximum batch size during prefill phase (default: 64)")
+  print("  --prefill_tbatch: Maximum batch size during prefill phase (default: 256)")
   print("  --kv_cache: Path of KV cache file.")
   print("  --output: Path of output file. (default: dump.bin)")
   print("  --num_threads: Maximum number of threads to use, 0 = unlimited. (default: 0)")
