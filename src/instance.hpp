@@ -12,7 +12,6 @@ namespace cgemma {
 
 constexpr const int PAD_ID = 0;
 constexpr const int UNK_ID = 3;
-constexpr const int EOT_ID = 107;
 
 class scheduler;
 class session;
@@ -24,6 +23,7 @@ public:
   const gcpp::LoaderArgs& args() const { return args_; }
   std::mt19937& rnd() { return rnd_; }
   gcpp::Gemma& model() const { return *model_; }
+  int eot_id() const { return eot_id_; }
   const std::unordered_set<int>& disabled_tokens() const { return disabled_tokens_; }
   size_t max_tokens() const { return model_->GetModelConfig().seq_len; }
 
@@ -36,6 +36,7 @@ private:
   std::mt19937 rnd_;
   std::unique_ptr<scheduler> default_sched_;
   std::unique_ptr<gcpp::Gemma> model_;
+  int eot_id_;
   std::unordered_set<int> disabled_tokens_;
 };
 

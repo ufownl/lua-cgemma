@@ -47,6 +47,11 @@ instance::instance(int argc, char* argv[], unsigned int seed, scheduler* sched)
   } else {
     model_ = std::make_unique<gcpp::Gemma>(args_.tokenizer, args_.weights, args_.Info(), sched->pools());
   }
+  std::vector<int> ids;
+  if (!model_->Tokenizer().Encode("<end_of_turn>", &ids)) {
+    throw std::runtime_error("Tokenizer encoding failed. (instance::instance)");
+  }
+  eot_id_ = ids.front();
 }
 
 void instance::declare(lua_State* L) {

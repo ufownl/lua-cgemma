@@ -179,7 +179,7 @@ int batch(lua_State* L) {
       auto& ctx = sess_ctxs[query_idx];
       if (ctx.stream_fn == 0) {
         if (pos - ctx.start_pos >= ctx.prompt.size()) {
-          if (token == gcpp::EOS_ID || inst->model().Info().wrapping == gcpp::PromptWrapping::GEMMA_IT && token == EOT_ID) {
+          if (token == gcpp::EOS_ID || inst->model().Info().wrapping == gcpp::PromptWrapping::GEMMA_IT && token == inst->eot_id()) {
             return false;
           }
           ctx.output.push_back(token);
@@ -191,7 +191,7 @@ int batch(lua_State* L) {
         lua_pushvalue(L, ctx.stream_fn);
         if (pos - ctx.start_pos < ctx.prompt.size()) {
           lua_pushnil(L);
-        } else if (token == gcpp::EOS_ID || inst->model().Info().wrapping == gcpp::PromptWrapping::GEMMA_IT && token == EOT_ID) {
+        } else if (token == gcpp::EOS_ID || inst->model().Info().wrapping == gcpp::PromptWrapping::GEMMA_IT && token == inst->eot_id()) {
           eot = true;
           lua_pushnil(L);
         } else {
