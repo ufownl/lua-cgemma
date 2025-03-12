@@ -51,7 +51,7 @@ int stream_mode(lua_State* L, cgemma::session* sess, const std::vector<int>& pro
     lua_pushvalue(L, 3);
     if (pos - start_pos < prompt_size) {
       lua_pushnil(L);
-    } else if (token == gcpp::EOS_ID || sess->inst()->model().Info().wrapping == gcpp::PromptWrapping::GEMMA_IT && token == sess->inst()->eot_id()) {
+    } else if (token == gcpp::EOS_ID || sess->inst()->instruction_tuned() && token == sess->inst()->eot_id()) {
       eot = true;
       lua_pushnil(L);
     } else {
@@ -91,7 +91,7 @@ int normal_mode(lua_State* L, cgemma::session* sess, const std::vector<int>& pro
   output.reserve(sess->args().max_generated_tokens);
   generate(sess, prompt, [&](size_t, size_t pos, int token, float) {
     if (pos - start_pos >= prompt_size) {
-      if (token == gcpp::EOS_ID || sess->inst()->model().Info().wrapping == gcpp::PromptWrapping::GEMMA_IT && token == sess->inst()->eot_id()) {
+      if (token == gcpp::EOS_ID || sess->inst()->instruction_tuned() && token == sess->inst()->eot_id()) {
         return false;
       }
       output.push_back(token);
@@ -328,7 +328,7 @@ std::vector<int> session::tokenize(const char* text, size_t len) const {
   constexpr const char model_sot[] = "<start_of_turn>model\n";
   constexpr const char eot[] = "<end_of_turn>\n";
   std::string s;
-  if (inst_->model().Info().wrapping == gcpp::PromptWrapping::GEMMA_IT) {
+  if (inst_->instruction_tuned()) {
     s.reserve(sizeof(eot) - 1
             + sizeof(user_sot) - 1
             + len

@@ -54,6 +54,16 @@ instance::instance(int argc, char* argv[], unsigned int seed, scheduler* sched)
   eot_id_ = ids.front();
 }
 
+bool instance::instruction_tuned() const {
+  switch (model_->Info().wrapping) {
+    case gcpp::PromptWrapping::GEMMA_IT:
+    case gcpp::PromptWrapping::GEMMA_VLM:
+      return true;
+    default:
+      return false;
+  };
+}
+
 void instance::declare(lua_State* L) {
   constexpr const luaL_Reg metatable[] = {
     {"__gc", destroy},

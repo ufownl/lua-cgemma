@@ -26,6 +26,7 @@ public:
   int eot_id() const { return eot_id_; }
   const std::unordered_set<int>& disabled_tokens() const { return disabled_tokens_; }
   size_t max_tokens() const { return model_->GetModelConfig().seq_len; }
+  bool instruction_tuned() const;
 
   static void declare(lua_State* L);
   static instance* check(lua_State* L, int index);
