@@ -14,11 +14,11 @@ if args.help then
   print()
   print("Store prompt's KV cache in a file.")
   print()
-  print("Usage: cat /path/to/prompt.txt | resty cache_prompt.lua [options]")
+  print("Usage: cat /path/to/prompt.txt | resty dump_prompt.lua [options]")
   print()
   print("Available options:")
   print("  --tokenizer: Path of tokenizer model file. (default: tokenizer.spm)")
-  print("  --model: Model type (default: gemma2-2b-pt)")
+  print("  --model: Model type (default: gemma3-4b)")
   print("    2b-it = Gemma 2B parameters, instruction-tuned")
   print("    2b-pt = Gemma 2B parameters, pretrained")
   print("    7b-it = Gemma 7B parameters, instruction-tuned")
@@ -31,7 +31,11 @@ if args.help then
   print("    9b-pt = Gemma2 9B parameters, pretrained")
   print("    27b-it = Gemma2 27B parameters, instruction-tuned")
   print("    27b-pt = Gemma2 27B parameters, pretrained")
-  print("  --weights: Path of model weights file. (default: 2.0-2b-it-sfp.sbs)")
+  print("    gemma3-4b = Gemma3 4B parameters")
+  print("    gemma3-1b = Gemma3 1B parameters")
+  print("    gemma3-12b = Gemma3 12B parameters")
+  print("    gemma3-27b = Gemma3 27B parameters")
+  print("  --weights: Path of model weights file. (default: 4b-it-sfp.sbs)")
   print("  --weight_type: Weight type (default: sfp)")
   print("  --prefill_tbatch: Maximum batch size during prefill phase (default: 256)")
   print("  --kv_cache: Path of KV cache file.")
@@ -67,8 +71,8 @@ print("Loading model ...")
 -- Create a Gemma instance
 local gemma, err = require("cgemma").new({
   tokenizer = args.tokenizer or "tokenizer.spm",
-  model = args.model or "gemma2-2b-pt",
-  weights = args.weights or "2.0-2b-it-sfp.sbs",
+  model = args.model or "gemma3-4b",
+  weights = args.weights or "4b-it-sfp.sbs",
   weight_type = args.weight_type,
   scheduler = sched
 })
