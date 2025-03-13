@@ -310,9 +310,10 @@ int stats(lua_State* L) {
 
 namespace cgemma {
 
-session::session(instance* inst, int argc, char* argv[])
+session::session(instance* inst, int argc, char* argv[], bool no_wrapping)
   : inst_(inst)
-  , args_(argc, argv) {
+  , args_(argc, argv)
+  , no_wrapping_(no_wrapping) {
   if (auto err = args_.Validate()) {
     throw std::invalid_argument(err);
   }
@@ -324,11 +325,11 @@ session::session(instance* inst, int argc, char* argv[])
 }
 
 std::vector<int> session::tokenize(const char* text, size_t len) const {
-  constexpr const char user_sot[] = "<start_of_turn>user\n";
-  constexpr const char model_sot[] = "<start_of_turn>model\n";
-  constexpr const char eot[] = "<end_of_turn>\n";
   std::string s;
-  if (inst_->instruction_tuned()) {
+  if (!no_wrapping_ && inst_->instruction_tuned()) {
+    constexpr const char user_sot[] = "<start_of_turn>user\n";
+    constexpr const char model_sot[] = "<start_of_turn>model\n";
+    constexpr const char eot[] = "<end_of_turn>\n";
     s.reserve(sizeof(eot) - 1
             + sizeof(user_sot) - 1
             + len
@@ -423,6 +424,7 @@ int session::create(lua_State* L) {
   constexpr const int n = sizeof(available_options) / sizeof(available_options[0]);
   int argc = 1;
   char* argv[n * 2 + 1] = {const_cast<char*>("lua-cgemma")};
+  bool no_wrapping = false;
   if (nargs >= opt_idx) {
     luaL_checktype(L, opt_idx, LUA_TTABLE);
     for (auto opt: available_options) {
@@ -435,10 +437,13 @@ int session::create(lua_State* L) {
       }
       lua_pop(L, 1);
     }
+    lua_getfield(L, opt_idx, "no_wrapping");
+    no_wrapping = lua_toboolean(L, -1) ? true : false;
+    lua_pop(L, 1);
   }
   auto ud = lua_newuserdata(L, sizeof(session));
   try {
-    auto sess = new(ud) session(inst, argc, argv);
+    auto sess = new(ud) session(inst, argc, argv, no_wrapping);
     if (sess->image_tokens() && img) {
       auto size = sess->inst()->model().GetModelConfig().vit_config.image_size;
       img->Resize(size, size);

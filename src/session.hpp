@@ -13,7 +13,7 @@ class instance;
 
 class session {
 public:
-  session(instance* inst, int argc, char* argv[]);
+  session(instance* inst, int argc, char* argv[], bool no_wrapping);
 
   instance* inst() const { return inst_; }
   const gcpp::InferenceArgs& args() const { return args_; }
@@ -37,6 +37,7 @@ public:
 private:
   instance* inst_;
   gcpp::InferenceArgs args_;
+  bool no_wrapping_;
   gcpp::ImageTokens img_;
   size_t pos_ {0};
   gcpp::KVCache kv_cache_;

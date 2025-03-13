@@ -79,7 +79,8 @@ end
 -- Create a session
 local session, err = gemma:session({
   max_generated_tokens = 1,
-  prefill_tbatch = args.prefill_tbatch
+  prefill_tbatch = args.prefill_tbatch,
+  no_wrapping = true
 })
 if not session then
   error("Opoos! "..err)
