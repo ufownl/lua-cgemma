@@ -3,6 +3,7 @@
 #include "instance.hpp"
 #include "session.hpp"
 #include "image.hpp"
+#include "image_tokens.hpp"
 #include "batch.hpp"
 #include <hwy/timer.h>
 #include <hwy/per_target.h>
@@ -52,6 +53,7 @@ int luaopen_cgemma(lua_State* L) {
   cgemma::instance::declare(L);
   cgemma::session::declare(L);
   cgemma::image::declare(L);
+  cgemma::image_tokens::declare(L);
   cgemma::batch_result::declare(L);
   lua_newtable(L);
   luaL_register(L, nullptr, entries);

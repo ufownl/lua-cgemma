@@ -1,5 +1,6 @@
 #include "instance.hpp"
 #include "scheduler.hpp"
+#include "image_tokens.hpp"
 #include "session.hpp"
 #include <stdexcept>
 
@@ -71,6 +72,7 @@ void instance::declare(lua_State* L) {
   };
   constexpr const luaL_Reg methods[] = {
     {"disabled_tokens", ::disabled_tokens},
+    {"embed_image", image_tokens::create},
     {"session", session::create},
     {nullptr, nullptr}
   };
