@@ -1,9 +1,10 @@
 function config()
   return {
+    scheduler = {},
     gemma = {
       tokenizer = "tokenizer.spm",
-      model = "gemma2-2b-it",
-      weights = "2.0-2b-it-sfp.sbs"
+      model = "gemma3-4b",
+      weights = "4b-it-sfp.sbs"
     },
     session = {
       prefill_tbatch = 64,
