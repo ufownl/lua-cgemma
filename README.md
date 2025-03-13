@@ -183,7 +183,7 @@ Available options and default values:
 ```lua
 {
   max_generated_tokens = 2048,  -- Maximum number of tokens to generate.
-  prefill_tbatch = 64,  -- Prefill: max tokens per batch.
+  prefill_tbatch = 256,  -- Prefill: max tokens per batch.
   decode_qbatch = 16,  -- Decode: max queries per batch.
   temperature = 1.0,  -- Temperature for top-K.
   top_k = 1,  -- Number of top-K tokens to sample from.
