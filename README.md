@@ -32,23 +32,17 @@ sudo make install
 
 ### Synopsis
 
-First of all:
-
 ```lua
 -- Create a Gemma instance
 local gemma, err = require("cgemma").new({
   tokenizer = "/path/to/tokenizer.spm",
-  model = "gemma2-2b-it",
-  weights = "/path/to/2.0-2b-it-sfp.sbs"
+  model = "gemma3-4b",
+  weights = "/path/to/4b-it-sfp.sbs"
 })
 if not gemma then
   error("Opoos! "..err)
 end
-```
 
-Single call API example:
-
-```lua
 -- Create a chat session
 local session, err = gemma:session()
 if not session then
@@ -75,52 +69,6 @@ while true do
 
   print("Exceed the maximum number of tokens")
   session:reset()
-end
-```
-
-Batch call API example:
-
-```lua
--- Create 2 chat sessions
-local sessions = {}
-for i = 1, 2 do
-  local session, err = gemma:session()
-  if not session then
-    error("Opoos! "..err)
-  end
-  table.insert(sessions, session)
-end
-
--- Run multiple queries using batch interface
-local turns = {
-  {sessions[1], "Tell me 1+1=?",          sessions[2], "Hello, world!"},
-  {sessions[1], "Write it using Python.", sessions[2], "Write what I said in uppercase."}
-}
-for i, queries in ipairs(turns) do
-  print(string.format("Turn %d:\n", i))
-
-  -- Make a batch call
-  local result, err = require("cgemma").batch(unpack(queries))
-  if not result then
-    error("Opoos! "..err)
-  end
-
-  -- Display the result of this batch call
-  local idx = 1
-  for j = 1, #queries do
-    if type(queries[j]) == "string" then
-      print(string.format("Q%d: %s\n", idx, queries[j]))
-      local resp, err = result(queries[j - 1])
-      if resp then
-        print(resp)
-      else
-        error("Opoos! "..err)
-      end
-      idx = idx + 1
-    end
-  end
-
-  print()
 end
 ```
 
@@ -173,27 +121,39 @@ Available options:
 
 ```lua
 {
-  tokenizer = "/path/to/tokenizer.spm",  -- Path of tokenizer model file. (required)
-  model = "gemma2-2b-it",  -- Model type:
-                           -- 2b-it (Gemma 2B parameters, instruction-tuned),
-                           -- 2b-pt (Gemma 2B parameters, pretrained),
-                           -- 7b-it (Gemma 7B parameters, instruction-tuned),
-                           -- 7b-pt (Gemma 7B parameters, pretrained),
-                           -- gr2b-it (Griffin 2B parameters, instruction-tuned),
-                           -- gr2b-pt (Griffin 2B parameters, pretrained),
-                           -- gemma2-2b-it (Gemma2 2B parameters, instruction-tuned),
-                           -- gemma2-2b-pt (Gemma2 2B parameters, pretrained).
-                           -- 9b-it (Gemma2 9B parameters, instruction-tuned),
-                           -- 9b-pt (Gemma2 9B parameters, pretrained),
-                           -- 27b-it (Gemma2 27B parameters, instruction-tuned),
-                           -- 27b-pt (Gemma2 27B parameters, pretrained),
-                           -- paligemma-224 (PaliGemma 224*224),
-                           -- (required)
-  weights = "/path/to/2.0-2b-it-sfp.sbs",  -- Path of model weights file. (required)
+  tokenizer = "/path/to/tokenizer.spm",  -- Path of tokenizer model file.
+  model = "gemma3-4b",  -- Model type:
+                        -- 2b-it (Gemma 2B parameters, instruction-tuned)
+                        -- 2b-pt (Gemma 2B parameters, pretrained)
+                        -- 7b-it (Gemma 7B parameters, instruction-tuned)
+                        -- 7b-pt (Gemma 7B parameters, pretrained)
+                        -- gr2b-it (Griffin 2B parameters, instruction-tuned)
+                        -- gr2b-pt (Griffin 2B parameters, pretrained)
+                        -- gemma2-2b-it (Gemma2 2B parameters, instruction-tuned)
+                        -- gemma2-2b-pt (Gemma2 2B parameters, pretrained)
+                        -- 9b-it (Gemma2 9B parameters, instruction-tuned)
+                        -- 9b-pt (Gemma2 9B parameters, pretrained)
+                        -- 27b-it (Gemma2 27B parameters, instruction-tuned)
+                        -- 27b-pt (Gemma2 27B parameters, pretrained)
+                        -- paligemma-224 (PaliGemma 224*224)
+                        -- paligemma-448 (PaliGemma 448*448)
+                        -- paligemma2-3b-224 (PaliGemma2 3B 224*224)
+                        -- paligemma2-3b-448 (PaliGemma2 3B 448*448)
+                        -- paligemma2-10b-224 (PaliGemma2 10B 224*224)
+                        -- paligemma2-10b-448 (PaliGemma2 10B 448*448)
+                        -- gemma3-4b (Gemma3 4B parameters)
+                        -- gemma3-1b (Gemma3 1B parameters)
+                        -- gemma3-12b (Gemma3 12B parameters)
+                        -- gemma3-27b (Gemma3 27B parameters)
+  weights = "/path/to/4b-it-sfp.sbs",  -- Path of model weights file. (requirednuq)
   weight_type = "sfp",  -- Weight type:
                         -- sfp (8-bit FP, default)
                         -- f32 (float)
                         -- bf16 (bfloat16)
+                        -- nuq (non-uniform quantization)
+                        -- f64 (double)
+                        -- c64 (complex double)
+                        -- u128 (uint128)
   seed = 42,  -- Random seed. (default is random setting)
   scheduler = sched_inst,  -- Instance of scheduler, if not provided a default
                            -- scheduler will be attached.
@@ -201,15 +161,30 @@ Available options:
 }
 ```
 
+> [!NOTE]
+> If the weights file is not in the new single-file format, then `tokenizer` and `model` options are required.
+
 #### cgemma.instance.disabled_tokens
 
 **syntax:** `<table>tokens = inst:disabled_tokens()`
 
 Query the disabled tokens of a Gemma instance.
 
+#### cgemma.instance.embed_image
+
+**syntax:** `<cgemma.image_tokens>img, <string>err = inst:embed_image(<string>data_or_path)`
+
+Load image data from the given Lua string or a specific file (PPM format: P6, binary) and embed it into the image tokens.
+
+**syntax:** `<cgemma.image_tokens>img, <string>err = inst:embed_image(<integer>width, <integer>height, <table>values)`
+
+Create an image with the given width, height, and pixel values, and embed it into the image tokens.
+
+A successful call returns a `cgemma.image_tokens` object containing the image tokens. Otherwise, it returns `nil` and a string describing the error.
+
 #### cgemma.instance.session
 
-**syntax:** `<cgemma.session>sess, <string>err = inst:session([[<cgemma.image>image, ]<table>options])`
+**syntax:** `<cgemma.session>sess, <string>err = inst:session([<table>options])`
 
 Create a chat session.
 
@@ -220,10 +195,11 @@ Available options and default values:
 ```lua
 {
   max_generated_tokens = 2048,  -- Maximum number of tokens to generate.
-  prefill_tbatch = 64,  -- Prefill: max tokens per batch.
+  prefill_tbatch = 256,  -- Prefill: max tokens per batch.
   decode_qbatch = 16,  -- Decode: max queries per batch.
   temperature = 1.0,  -- Temperature for top-K.
   top_k = 1,  -- Number of top-K tokens to sample from.
+  no_wrapping = false,  -- Whether to force disable instruction-tuned wrapping.
 }
 ```
 
@@ -293,7 +269,7 @@ Example of statistics:
 
 #### metatable(cgemma.session).__call
 
-**syntax:** `<string or boolean>reply, <string>err = sess(<string>text[, <function>stream])`
+**syntax:** `<string or boolean>reply, <string>err = sess([<cgemma.image_tokens>img, ]<string>text[, <function>stream])`
 
 Generate reply.
 
@@ -322,21 +298,9 @@ function stream(token, pos, prompt_size)
 end
 ```
 
-#### cgemma.image
-
-**syntax:** `<cgemma.image>img, <string>err = cgemma.image(<string>data_or_path)`
-
-Load image data from the given Lua string or a specific file (PPM format: P6, binary).
-
-**syntax:** `<cgemma.image>img, <string>err = cgemma.image(<integer>width, <integer>height, <table>values)`
-
-Create an image object with the given width, height, and pixel values.
-
-A successful call returns a `cgemma.image` object containing the image data. Otherwise, it returns `nil` and a string describing the error.
-
 #### cgemma.batch
 
-**syntax:** `<cgemma.batch_result>result, <string>err = cgemma.batch(<cgemma.session>sess, <string>text[, <function>stream], ...)`
+**syntax:** `<cgemma.batch_result>result, <string>err = cgemma.batch([<cgemma.image_tokens>img, ]<cgemma.session>sess, <string>text[, <function>stream], ...)`
 
 Generate replies for multiple queries via the batch interface.
 
@@ -348,7 +312,8 @@ The stream function is the same as in [metatable(cgemma.session).call](#metatabl
 > 1. Each element in a batch must start with a session, followed by a string and an optional stream function, with a stream function means that the corresponding session will be in stream mode instead of normal mode;
 > 2. All sessions in a batch must be created by the same Gemma instance;
 > 3. Sessions in a batch must not be duplicated;
-> 4. Inference arguments of batch call: `max_generated_tokens`, `prefill_tbatch`, and `decode_qbatch` will be the minimum value of all sessions, `temperature` will be the average value of all sessions, and `top_k` will be the maximum value of all sessions.
+> 4. Inference arguments of batch call: `max_generated_tokens`, `prefill_tbatch`, and `decode_qbatch` will be the minimum value of all sessions, `temperature` will be the average value of all sessions, and `top_k` will be the maximum value of all sessions;
+> 5. The embedded image can only be given as the first argument to a batch call.
 
 #### cgemma.batch_result.stats
 
@@ -365,6 +330,28 @@ The statistics fields are the same as in [cgemma.session.stats](#cgemmasessionst
 Query the reply corresponding to the session in the result.
 
 A successful call returns the content of the reply (normal mode) or `true` (stream mode). Otherwise, it returns `nil` and a string describing the error.
+
+### Migrating to single-file weights format
+
+The weights file now has a new format: a single file that allows the tokenizer and the model type to be contained directly. A tool to migrate from multi-file to single-file is available.
+
+```bash
+gemma.migrate_weights \
+  --tokenizer /path/to/tokenizer.spm --weights /path/to/2.0-2b-it-sfp.sbs \
+  --model gemma2-2b-it --output_weights /path/to/2.0-2b-it-sfp-single.sbs
+```
+
+After migration, you can create a Gemma instance using the new weights file like this:
+
+```lua
+-- Create a Gemma instance
+local gemma, err = require("cgemma").new({
+  weights = "/path/to/2.0-2b-it-sfp-single.sbs"
+})
+if not gemma then
+  error("Opoos! "..err)
+end
+```
 
 ## License
 

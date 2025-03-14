@@ -1,5 +1,6 @@
 #include "scheduler.hpp"
-#include <util/app.h>
+#include "utils/laux.hpp"
+#include <util/allocator.h>
 
 namespace {
 
@@ -17,12 +18,14 @@ int destroy(lua_State* L) {
 }
 
 std::unique_ptr<gcpp::NestedPools> make_pools(const gcpp::AppArgs& args) {
-  return std::make_unique<gcpp::NestedPools>(
+  auto pools = std::make_unique<gcpp::NestedPools>(
     args.max_threads, args.pin,
     gcpp::BoundedSlice(args.skip_packages, args.max_packages),
     gcpp::BoundedSlice(args.skip_clusters, args.max_clusters),
     gcpp::BoundedSlice(args.skip_lps, args.max_lps)
   );
+  gcpp::Allocator::Init(pools->Topology());
+  return pools;
 }
 
 }
@@ -57,15 +60,11 @@ void scheduler::declare(lua_State* L) {
 }
 
 scheduler* scheduler::to(lua_State* L, int index) {
-  return lua_isuserdata(L, index) && luaL_checkudata(L, index, name) ? static_cast<scheduler*>(lua_touserdata(L, index)) : nullptr;
+  return static_cast<scheduler*>(utils::userdata(L, index, name));
 }
 
 scheduler* scheduler::check(lua_State* L, int index) {
-  auto ud = scheduler::to(L, index);
-  if (!ud) {
-    luaL_error(L, "Bad argument #%d, %s expected", index, name);
-  }
-  return ud;
+  return static_cast<scheduler*>(luaL_checkudata(L, index, name));
 }
 
 int scheduler::create(lua_State* L) {

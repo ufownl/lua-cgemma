@@ -2,7 +2,7 @@
 #include "scheduler.hpp"
 #include "instance.hpp"
 #include "session.hpp"
-#include "image.hpp"
+#include "image_tokens.hpp"
 #include "batch.hpp"
 #include <hwy/timer.h>
 #include <hwy/per_target.h>
@@ -26,7 +26,6 @@ int info(lua_State* L) {
   std::cout << banner << std::endl;
   auto now = std::time(nullptr);
   std::cout << "Date & Time              : " << std::put_time(std::localtime(&now), "%F %T") << std::endl;
-  std::cout << "Max Sequence Length      : " << gcpp::kSeqLen << std::endl;
   char cpu[100];
   if (hwy::platform::GetCpuString(cpu)) {
     std::cout << "CPU                      : " << cpu << std::endl;
@@ -45,14 +44,13 @@ int luaopen_cgemma(lua_State* L) {
     {"info", info},
     {"scheduler", cgemma::scheduler::create},
     {"new", cgemma::instance::create},
-    {"image", cgemma::image::create},
     {"batch", cgemma::batch},
     {nullptr, nullptr}
   };
   cgemma::scheduler::declare(L);
   cgemma::instance::declare(L);
   cgemma::session::declare(L);
-  cgemma::image::declare(L);
+  cgemma::image_tokens::declare(L);
   cgemma::batch_result::declare(L);
   lua_newtable(L);
   luaL_register(L, nullptr, entries);

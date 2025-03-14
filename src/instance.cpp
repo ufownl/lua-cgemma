@@ -1,5 +1,6 @@
 #include "instance.hpp"
 #include "scheduler.hpp"
+#include "image_tokens.hpp"
 #include "session.hpp"
 #include <stdexcept>
 
@@ -42,11 +43,26 @@ instance::instance(int argc, char* argv[], unsigned int seed, scheduler* sched)
     default_sched_ = std::make_unique<scheduler>();
     sched = default_sched_.get();
   }
-  model_ = std::make_unique<gcpp::Gemma>(args_.tokenizer, args_.weights, args_.Info(), sched->pools());
+  if (args_.Info().weight == gcpp::Type::kUnknown || args_.Info().model == gcpp::Model::UNKNOWN || args_.tokenizer.path.empty()) {
+    model_ = std::make_unique<gcpp::Gemma>(args_.weights, sched->pools());
+  } else {
+    model_ = std::make_unique<gcpp::Gemma>(args_.tokenizer, args_.weights, args_.Info(), sched->pools());
+  }
+  std::vector<int> ids;
+  if (!model_->Tokenizer().Encode("<end_of_turn>", &ids)) {
+    throw std::runtime_error("Tokenizer encoding failed. (instance::instance)");
+  }
+  eot_id_ = ids.front();
 }
 
-size_t instance::max_tokens() const {
-  return model_->GetModelConfig().seq_len;
+bool instance::instruction_tuned() const {
+  switch (model_->Info().wrapping) {
+    case gcpp::PromptWrapping::GEMMA_IT:
+    case gcpp::PromptWrapping::GEMMA_VLM:
+      return true;
+    default:
+      return false;
+  };
 }
 
 void instance::declare(lua_State* L) {
@@ -56,6 +72,7 @@ void instance::declare(lua_State* L) {
   };
   constexpr const luaL_Reg methods[] = {
     {"disabled_tokens", ::disabled_tokens},
+    {"embed_image", image_tokens::create},
     {"session", session::create},
     {nullptr, nullptr}
   };
@@ -69,17 +86,14 @@ void instance::declare(lua_State* L) {
 }
 
 instance* instance::check(lua_State* L, int index) {
-  if (!lua_isuserdata(L, index) || !luaL_checkudata(L, index, name)) {
-    luaL_error(L, "Bad argument #%d, %s expected", index, name);
-  }
-  return static_cast<instance*>(lua_touserdata(L, index));
+  return static_cast<instance*>(luaL_checkudata(L, index, name));
 }
 
 int instance::create(lua_State* L) {
   luaL_checktype(L, 1, LUA_TTABLE);
-  constexpr const char* required_options[] = {"--tokenizer", "--model", "--weights"};
+  constexpr const char* required_options[] = {"--weights"};
   constexpr const int n = sizeof(required_options) / sizeof(required_options[0]);
-  constexpr const char* optional_options[] = {"--weight_type"};
+  constexpr const char* optional_options[] = {"--tokenizer", "--model", "--weight_type"};
   constexpr const int m = sizeof(optional_options) / sizeof(optional_options[0]);
   char* argv[(n + m) * 2 + 1] = {const_cast<char*>("lua-cgemma")};
   for (int i = 0; i < n; ++i) {

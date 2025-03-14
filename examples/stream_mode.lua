@@ -13,8 +13,8 @@ end
 -- Create a Gemma instance
 local gemma, err = require("cgemma").new({
   tokenizer = args.tokenizer or "tokenizer.spm",
-  model = args.model or "gemma2-2b-it",
-  weights = args.weights or "2.0-2b-it-sfp.sbs",
+  model = args.model or "gemma3-4b",
+  weights = args.weights or "4b-it-sfp.sbs",
   weight_type = args.weight_type
 })
 if not gemma then
@@ -24,14 +24,14 @@ end
 local image, err
 if args.image then
   -- Load image data
-  image, err = require("cgemma").image(args.image)
+  image, err = gemma:embed_image(args.image)
   if not image then
     error("Opoos! "..err)
   end
 end
 
 -- Create a chat session
-local session, err = image and gemma:session(image, {top_k = 50}) or gemma:session({top_k = 50})
+local session, err = gemma:session({top_k = 50})
 if not session then
   error("Opoos! "..err)
 end
@@ -65,7 +65,9 @@ while true do
       print("Done")
       return
     end
-    local ok, err = session(text, function(token, pos, prompt_size)
+    local t = image and {image} or {}
+    table.insert(t, text)
+    table.insert(t, function(token, pos, prompt_size)
       if pos < prompt_size then
         -- Gemma is processing the prompt
         io.write(pos == 0 and "reading and thinking ." or ".")
@@ -83,6 +85,7 @@ while true do
       -- return `true` indicates success; return `false` indicates failure and terminates the generation
       return true
     end)
+    local ok, err = session(unpack(t))
     if not ok then
       error("Opoos! "..err)
     end
