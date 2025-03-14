@@ -24,14 +24,14 @@ end
 local image, err
 if args.image then
   -- Load image data
-  image, err = require("cgemma").image(args.image)
+  image, err = gemma:embed_image(args.image)
   if not image then
     error("Opoos! "..err)
   end
 end
 
 -- Create a chat session
-local session, err = image and gemma:session(image, {top_k = 50}) or gemma:session({top_k = 50})
+local session, err = gemma:session({top_k = 50})
 if not session then
   error("Opoos! "..err)
 end
@@ -65,7 +65,7 @@ while true do
       print("Done")
       return
     end
-    local reply, err = session(text)
+    local reply, err = session(unpack(image and {image, text} or {text}))
     if not reply then
       error("Opoos! "..err)
     end
