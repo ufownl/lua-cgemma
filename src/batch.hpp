@@ -19,6 +19,7 @@ struct session_context {
   session* sess;
   std::vector<int> prompt;
   size_t start_pos;
+  size_t prefix_end = 0;
   std::vector<int> output;
   int stream_fn = 0;
 };

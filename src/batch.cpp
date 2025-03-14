@@ -1,6 +1,8 @@
 #include "batch.hpp"
 #include "instance.hpp"
 #include "session.hpp"
+#include "image_tokens.hpp"
+#include <tuple>
 #include <stdexcept>
 
 namespace {
@@ -11,10 +13,12 @@ public:
     : sess_ctxs_(sess_ctxs) {
     prompts_.reserve(sess_ctxs.size());
     start_pos_.reserve(sess_ctxs.size());
+    prefix_end_.reserve(sess_ctxs.size());
     kv_caches_.reserve(sess_ctxs.size());
     for (auto& ctx: sess_ctxs) {
       prompts_.emplace_back(ctx.prompt.data(), ctx.prompt.size());
       start_pos_.emplace_back(ctx.start_pos);
+      prefix_end_.emplace_back(ctx.prefix_end);
       kv_caches_.emplace_back(std::move(ctx.sess->kv_cache()));
     }
   }
@@ -33,6 +37,10 @@ public:
     return gcpp::QueriesPos(start_pos_.data(), start_pos_.size());
   }
 
+  gcpp::QueriesPos prefix_end() {
+    return gcpp::QueriesPos(prefix_end_.data(), prefix_end_.size());
+  }
+
   gcpp::KVCaches kv_caches() {
     return gcpp::KVCaches(kv_caches_.data(), kv_caches_.size());
   }
@@ -41,10 +49,11 @@ private:
   const std::vector<cgemma::session_context>& sess_ctxs_;
   std::vector<gcpp::PromptTokens> prompts_;
   std::vector<size_t> start_pos_;
+  std::vector<size_t> prefix_end_;
   std::vector<gcpp::KVCache> kv_caches_;
 };
 
-int init_arg_state(lua_State* L, int narg, std::vector<cgemma::session_context>& sess_ctxs) {
+int init_arg_state(lua_State* L, int narg, const gcpp::ImageTokens* image, std::vector<cgemma::session_context>& sess_ctxs) {
   auto sess = cgemma::session::check(L, narg);
   if (sess->pos() >= sess->inst()->max_tokens()) {
     throw std::invalid_argument("Sessions in a batch must not be ended.");
@@ -63,17 +72,22 @@ int init_arg_state(lua_State* L, int narg, std::vector<cgemma::session_context>&
   return 1;
 }
 
-std::vector<cgemma::session_context> parse_args(lua_State* L) {
+std::tuple<const gcpp::ImageTokens*, std::vector<cgemma::session_context>> parse_args(lua_State* L) {
   constexpr decltype(init_arg_state)* const arg_states[] = {
     init_arg_state,
-    [](lua_State* L, int narg, std::vector<cgemma::session_context>& sess_ctxs) {
+    [](lua_State* L, int narg, const gcpp::ImageTokens* image, std::vector<cgemma::session_context>& sess_ctxs) {
       size_t len;
       auto text = luaL_checklstring(L, narg, &len);
       auto& ctx = sess_ctxs.back();
-      ctx.prompt = ctx.sess->tokenize(text, len);
+      if (image) {
+        ctx.prompt = ctx.sess->tokenize(*image, text, len);
+        ctx.prefix_end = ctx.prompt.size();
+      } else {
+        ctx.prompt = ctx.sess->tokenize(text, len);
+      }
       return 2;
     },
-    [](lua_State* L, int narg, std::vector<cgemma::session_context>& sess_ctxs) {
+    [](lua_State* L, int narg, const gcpp::ImageTokens* image, std::vector<cgemma::session_context>& sess_ctxs) {
       auto& ctx = sess_ctxs.back();
       if (lua_isfunction(L, narg)) {
         ctx.output.resize(1);
@@ -81,24 +95,26 @@ std::vector<cgemma::session_context> parse_args(lua_State* L) {
         return 0;
       } else {
         ctx.output.reserve(ctx.sess->args().max_generated_tokens);
-        return init_arg_state(L, narg, sess_ctxs);
+        return init_arg_state(L, narg, image, sess_ctxs);
       }
     }
   };
+  auto image = cgemma::image_tokens::to(L, 1);
+  auto offset = image ? 1 : 0;
   auto nargs = lua_gettop(L);
-  if (nargs < 2) {
-    luaL_error(L, "Too few arguments, at least 2 expected");
+  if (nargs < 2 + offset) {
+    luaL_error(L, "Too few arguments, at least %d expected", 2 + offset);
   }
   std::vector<cgemma::session_context> sess_ctxs;
-  sess_ctxs.reserve(nargs / 2);
+  sess_ctxs.reserve((nargs + offset) / 2);
   int arg_state = 0;
-  for (auto i = 1; i <= nargs; ++i) {
-    arg_state = arg_states[arg_state](L, i, sess_ctxs);
+  for (auto i = 1 + offset; i <= nargs; ++i) {
+    arg_state = arg_states[arg_state](L, i, image, sess_ctxs);
   }
   if (sess_ctxs.back().prompt.empty()) {
     luaL_error(L, "Too few arguments, %d expected", nargs + 1);
   }
-  return sess_ctxs;
+  return {image, std::move(sess_ctxs)};
 }
 
 gcpp::RuntimeConfig parse_config(const std::vector<cgemma::session_context>& sess_ctxs) {
@@ -122,7 +138,7 @@ gcpp::RuntimeConfig parse_config(const std::vector<cgemma::session_context>& ses
 gcpp::TimingInfo generate(cgemma::instance* inst, const std::vector<cgemma::session_context>& sess_ctxs, const gcpp::RuntimeConfig& cfg) {
   gcpp::TimingInfo timing;
   batch_data_holder bdh(sess_ctxs);
-  inst->model().GenerateBatch(cfg, bdh.prompts(), bdh.start_pos(), bdh.kv_caches(), timing);
+  inst->model().GenerateBatch(cfg, bdh.prompts(), bdh.start_pos(), bdh.prefix_end(), bdh.kv_caches(), timing);
   return timing;
 }
 
@@ -167,7 +183,9 @@ namespace cgemma {
 
 int batch(lua_State* L) {
   try {
-    auto sess_ctxs = parse_args(L);
+    const gcpp::ImageTokens* image;
+    std::vector<cgemma::session_context> sess_ctxs;
+    std::tie(image, sess_ctxs) = parse_args(L);
     auto cfg = parse_config(sess_ctxs);
     cfg.verbosity = 0;
     auto inst = sess_ctxs.front().sess->inst();
@@ -216,6 +234,13 @@ int batch(lua_State* L) {
       cfg.accept_token = [&](int token, float) {
         return inst->disabled_tokens().find(token) == inst->disabled_tokens().end();
       };
+    }
+    if (image) {
+      cfg.prefill_tbatch_size = 0;
+      for (const auto& ctx: sess_ctxs) {
+        cfg.prefill_tbatch_size = std::max(cfg.prefill_tbatch_size, ctx.prefix_end);
+      }
+      cfg.image_tokens = image;
     }
     auto timing = generate(inst, sess_ctxs, cfg);
     auto ud = lua_newuserdata(L, sizeof(batch_result));

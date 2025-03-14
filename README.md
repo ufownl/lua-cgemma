@@ -300,7 +300,7 @@ end
 
 #### cgemma.batch
 
-**syntax:** `<cgemma.batch_result>result, <string>err = cgemma.batch(<cgemma.session>sess, <string>text[, <function>stream], ...)`
+**syntax:** `<cgemma.batch_result>result, <string>err = cgemma.batch([<cgemma.image_tokens>img, ]<cgemma.session>sess, <string>text[, <function>stream], ...)`
 
 Generate replies for multiple queries via the batch interface.
 
@@ -312,7 +312,8 @@ The stream function is the same as in [metatable(cgemma.session).call](#metatabl
 > 1. Each element in a batch must start with a session, followed by a string and an optional stream function, with a stream function means that the corresponding session will be in stream mode instead of normal mode;
 > 2. All sessions in a batch must be created by the same Gemma instance;
 > 3. Sessions in a batch must not be duplicated;
-> 4. Inference arguments of batch call: `max_generated_tokens`, `prefill_tbatch`, and `decode_qbatch` will be the minimum value of all sessions, `temperature` will be the average value of all sessions, and `top_k` will be the maximum value of all sessions.
+> 4. Inference arguments of batch call: `max_generated_tokens`, `prefill_tbatch`, and `decode_qbatch` will be the minimum value of all sessions, `temperature` will be the average value of all sessions, and `top_k` will be the maximum value of all sessions;
+> 5. The embedded image can only be given as the first argument to a batch call.
 
 #### cgemma.batch_result.stats
 
