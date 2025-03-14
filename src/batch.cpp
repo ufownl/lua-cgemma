@@ -297,10 +297,7 @@ void batch_result::declare(lua_State* L) {
 }
 
 batch_result* batch_result::check(lua_State* L, int index) {
-  if (!lua_isuserdata(L, index) || !luaL_checkudata(L, index, name)) {
-    luaL_error(L, "Bad argument #%d, %s expected", index, name);
-  }
-  return static_cast<batch_result*>(lua_touserdata(L, index));
+  return static_cast<batch_result*>(luaL_checkudata(L, index, name));
 }
 
 }

@@ -86,10 +86,7 @@ void instance::declare(lua_State* L) {
 }
 
 instance* instance::check(lua_State* L, int index) {
-  if (!lua_isuserdata(L, index) || !luaL_checkudata(L, index, name)) {
-    luaL_error(L, "Bad argument #%d, %s expected", index, name);
-  }
-  return static_cast<instance*>(lua_touserdata(L, index));
+  return static_cast<instance*>(luaL_checkudata(L, index, name));
 }
 
 int instance::create(lua_State* L) {

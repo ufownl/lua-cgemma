@@ -1,5 +1,6 @@
 #include "image_tokens.hpp"
 #include "instance.hpp"
+#include "utils/laux.hpp"
 
 namespace {
 
@@ -32,15 +33,11 @@ void declare(lua_State* L) {
 }
 
 gcpp::ImageTokens* to(lua_State* L, int index) {
-  return lua_isuserdata(L, index) && luaL_checkudata(L, index, name) ? static_cast<gcpp::ImageTokens*>(lua_touserdata(L, index)) : nullptr;
+  return static_cast<gcpp::ImageTokens*>(utils::userdata(L, index, name));
 }
 
 gcpp::ImageTokens* check(lua_State* L, int index) {
-  auto ud = to(L, index);
-  if (!ud) {
-    luaL_error(L, "Bad argument #%d, %s expected", index, name);
-  }
-  return ud;
+  return static_cast<gcpp::ImageTokens*>(luaL_checkudata(L, index, name));
 }
 
 int create(lua_State* L) {

@@ -1,4 +1,5 @@
 #include "scheduler.hpp"
+#include "utils/laux.hpp"
 #include <util/allocator.h>
 
 namespace {
@@ -59,15 +60,11 @@ void scheduler::declare(lua_State* L) {
 }
 
 scheduler* scheduler::to(lua_State* L, int index) {
-  return lua_isuserdata(L, index) && luaL_checkudata(L, index, name) ? static_cast<scheduler*>(lua_touserdata(L, index)) : nullptr;
+  return static_cast<scheduler*>(utils::userdata(L, index, name));
 }
 
 scheduler* scheduler::check(lua_State* L, int index) {
-  auto ud = scheduler::to(L, index);
-  if (!ud) {
-    luaL_error(L, "Bad argument #%d, %s expected", index, name);
-  }
-  return ud;
+  return static_cast<scheduler*>(luaL_checkudata(L, index, name));
 }
 
 int scheduler::create(lua_State* L) {
