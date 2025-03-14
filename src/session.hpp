@@ -5,6 +5,7 @@
 #include <gemma/gemma.h>
 #include <paligemma/image.h>
 #include <util/app.h>
+#include <string>
 #include <vector>
 
 namespace cgemma {
@@ -34,6 +35,9 @@ public:
   static int create(lua_State* L);
 
 private:
+  std::vector<int> tokenize_text(const std::string& text) const;
+  std::vector<int> tokenize_wrap(const std::vector<int>& tokens) const;
+
   instance* inst_;
   gcpp::InferenceArgs args_;
   bool no_wrapping_;

@@ -303,45 +303,22 @@ session::session(instance* inst, int argc, char* argv[], bool no_wrapping)
 }
 
 std::vector<int> session::tokenize(const char* text, size_t len) const {
-  std::string s;
+  auto prompt = tokenize_text(std::string(text, len));
   if (!no_wrapping_ && inst_->instruction_tuned()) {
-    constexpr const char user_sot[] = "<start_of_turn>user\n";
-    constexpr const char model_sot[] = "<start_of_turn>model\n";
-    constexpr const char eot[] = "<end_of_turn>\n";
-    s.reserve(sizeof(eot) - 1
-            + sizeof(user_sot) - 1
-            + len
-            + sizeof(eot) - 1
-            + sizeof(model_sot) - 1);
-    if (pos_ > 0) {
-      s.append(eot, sizeof(eot) - 1);
-    }
-    s.append(user_sot, sizeof(user_sot) - 1);
-    s.append(text, len);
-    s.append(eot, sizeof(eot) - 1);
-    s.append(model_sot, sizeof(model_sot) - 1);
+    return tokenize_wrap(prompt);
   } else {
-    s.append(text, len);
+    if (pos_ == 0) {
+      prompt.insert(prompt.cbegin(), gcpp::BOS_ID);
+    }
+    return prompt;
   }
-  std::vector<int> prompt;
-  const auto max_prompt_tokens = inst_->max_tokens() - args_.max_generated_tokens;
-  prompt.reserve(max_prompt_tokens > pos_ + 64 ? max_prompt_tokens - pos_ : 64);
-  if (!inst_->model().Tokenizer().Encode(s, &prompt)) {
-    throw std::runtime_error("Tokenizer encoding failed. (session::tokenize)");
-  }
-  if (!inst_->disabled_tokens().empty()) {
-    std::replace_if(prompt.begin(), prompt.end(), [&](int token) {
-      return inst_->disabled_tokens().find(token) != inst_->disabled_tokens().end();
-    }, UNK_ID);
-  }
-  if (pos_ == 0) {
-    prompt.insert(prompt.cbegin(), gcpp::BOS_ID);
-  }
-  return prompt;
 }
 
 std::vector<int> session::tokenize(const gcpp::ImageTokens& image, const char* text, size_t len) const {
-  auto text_part = tokenize(text, len);
+  if (no_wrapping_) {
+    throw std::invalid_argument("No wrapping mode does not support images.");
+  }
+  auto text_part = tokenize_text(std::string(text, len));
   std::vector<int> prompt;
   switch (inst_->model().Info().wrapping) {
     case gcpp::PromptWrapping::PALIGEMMA: {
@@ -349,16 +326,34 @@ std::vector<int> session::tokenize(const gcpp::ImageTokens& image, const char* t
       if (!inst_->model().Tokenizer().Encode("\n", &sep)) {
         throw std::runtime_error("Tokenizer encoding failed. (session::tokenize)");
       }
-      prompt.reserve(image.BatchSize() + text_part.size() + sep.size());
+      prompt.reserve(image.BatchSize() + 1 + text_part.size() + sep.size());
       prompt.resize(image.BatchSize(), PAD_ID);
+      prompt.push_back(gcpp::BOS_ID);
       prompt.insert(prompt.cend(), text_part.cbegin(), text_part.cend());
       prompt.insert(prompt.cend(), sep.cbegin(), sep.cend());
-      break;
+      return prompt;
+    }
+    case gcpp::PromptWrapping::GEMMA_VLM: {
+      std::vector<int> soi;
+      soi.reserve(2);
+      if (!inst_->model().Tokenizer().Encode("\n\n<start_of_image>", &soi)) {
+        throw std::runtime_error("Tokenizer encoding failed. (session::tokenize)");
+      }
+      std::vector<int> eoi;
+      eoi.reserve(2);
+      if (!inst_->model().Tokenizer().Encode("<end_of_image>\n\n", &eoi)) {
+        throw std::runtime_error("Tokenizer encoding failed. (session::tokenize)");
+      }
+      prompt.reserve(soi.size() + image.BatchSize() + eoi.size() + text_part.size());
+      prompt.insert(prompt.cend(), soi.cbegin(), soi.cend());
+      prompt.insert(prompt.cend(), image.BatchSize(), -2);
+      prompt.insert(prompt.cend(), eoi.cbegin(), eoi.cend());
+      prompt.insert(prompt.cend(), text_part.cbegin(), text_part.cend());
+      return tokenize_wrap(prompt);
     }
     default:
       throw std::invalid_argument("Current variant does not support images.");
   }
-  return prompt;
 }
 
 void session::declare(lua_State* L) {
@@ -431,6 +426,51 @@ int session::create(lua_State* L) {
     lua_pushstring(L, e.what());
     return 2;
   }
+}
+
+std::vector<int> session::tokenize_text(const std::string& text) const {
+  std::vector<int> prompt;
+  const auto max_prompt_tokens = inst_->max_tokens() - args_.max_generated_tokens;
+  prompt.reserve(max_prompt_tokens > pos_ + 64 ? max_prompt_tokens - pos_ : 64);
+  if (!inst_->model().Tokenizer().Encode(text, &prompt)) {
+    throw std::runtime_error("Tokenizer encoding failed. (session::tokenize_text)");
+  }
+  if (!inst_->disabled_tokens().empty()) {
+    std::replace_if(prompt.begin(), prompt.end(), [&](int token) {
+      return inst_->disabled_tokens().find(token) != inst_->disabled_tokens().end();
+    }, UNK_ID);
+  }
+  return prompt;
+}
+
+std::vector<int> session::tokenize_wrap(const std::vector<int>& input) const {
+  std::vector<int> sot_user;
+  sot_user.reserve(3);
+  if (!inst_->model().Tokenizer().Encode("<start_of_turn>user\n", &sot_user)) {
+    throw std::runtime_error("Tokenizer encoding failed. (session::tokenize_wrap)");
+  }
+  std::vector<int> sot_model;
+  sot_model.reserve(3);
+  if (!inst_->model().Tokenizer().Encode("<start_of_turn>model\n", &sot_model)) {
+    throw std::runtime_error("Tokenizer encoding failed. (session::tokenize_wrap)");
+  }
+  std::vector<int> eot;
+  eot.reserve(2);
+  if (!inst_->model().Tokenizer().Encode("<end_of_turn>\n", &eot)) {
+    throw std::runtime_error("Tokenizer encoding failed. (session::tokenize_wrap)");
+  }
+  std::vector<int> output;
+  output.reserve(eot.size() + sot_user.size() + input.size() + eot.size() + sot_model.size());
+  if (pos_ > 0) {
+    output.insert(output.cend(), eot.cbegin(), eot.cend());
+  } else {
+    output.push_back(gcpp::BOS_ID);
+  }
+  output.insert(output.cend(), sot_user.cbegin(), sot_user.cend());
+  output.insert(output.cend(), input.cbegin(), input.cend());
+  output.insert(output.cend(), eot.cbegin(), eot.cend());
+  output.insert(output.cend(), sot_model.cbegin(), sot_model.cend());
+  return output;
 }
 
 void push_timing(lua_State*L, const gcpp::TimingInfo& timing) {
