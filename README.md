@@ -170,9 +170,21 @@ Available options:
 
 Query the disabled tokens of a Gemma instance.
 
+#### cgemma.instance.embed_image
+
+**syntax:** `<cgemma.image_tokens>img, <string>err = inst:embed_image(<string>data_or_path)`
+
+Load image data from the given Lua string or a specific file (PPM format: P6, binary) and embed it into the image tokens.
+
+**syntax:** `<cgemma.image_tokens>img, <string>err = inst:embed_image(<integer>width, <integer>height, <table>values)`
+
+Create an image with the given width, height, and pixel values, and embed it into the image tokens.
+
+A successful call returns a `cgemma.image_tokens` object containing the image tokens. Otherwise, it returns `nil` and a string describing the error.
+
 #### cgemma.instance.session
 
-**syntax:** `<cgemma.session>sess, <string>err = inst:session([[<cgemma.image>image, ]<table>options])`
+**syntax:** `<cgemma.session>sess, <string>err = inst:session([<table>options])`
 
 Create a chat session.
 
@@ -257,7 +269,7 @@ Example of statistics:
 
 #### metatable(cgemma.session).__call
 
-**syntax:** `<string or boolean>reply, <string>err = sess(<string>text[, <function>stream])`
+**syntax:** `<string or boolean>reply, <string>err = sess([<cgemma.image_tokens>img, ]<string>text[, <function>stream])`
 
 Generate reply.
 
@@ -285,18 +297,6 @@ function stream(token, pos, prompt_size)
   return true
 end
 ```
-
-#### cgemma.image
-
-**syntax:** `<cgemma.image>img, <string>err = cgemma.image(<string>data_or_path)`
-
-Load image data from the given Lua string or a specific file (PPM format: P6, binary).
-
-**syntax:** `<cgemma.image>img, <string>err = cgemma.image(<integer>width, <integer>height, <table>values)`
-
-Create an image object with the given width, height, and pixel values.
-
-A successful call returns a `cgemma.image` object containing the image data. Otherwise, it returns `nil` and a string describing the error.
 
 #### cgemma.batch
 
