@@ -335,7 +335,7 @@ std::vector<int> session::tokenize(const char* text, size_t len) const {
     }, UNK_ID);
   }
   if (pos_ == 0) {
-    prompt.emplace(prompt.cbegin(), gcpp::BOS_ID);
+    prompt.insert(prompt.cbegin(), gcpp::BOS_ID);
   }
   return prompt;
 }
@@ -350,7 +350,7 @@ std::vector<int> session::tokenize(const gcpp::ImageTokens& image, const char* t
         throw std::runtime_error("Tokenizer encoding failed. (session::tokenize)");
       }
       prompt.reserve(image.BatchSize() + text_part.size() + sep.size());
-      prompt.resize(image.BatchSize(), cgemma::PAD_ID);
+      prompt.resize(image.BatchSize(), PAD_ID);
       prompt.insert(prompt.cend(), text_part.cbegin(), text_part.cend());
       prompt.insert(prompt.cend(), sep.cbegin(), sep.cend());
       break;
