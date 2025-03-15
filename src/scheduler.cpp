@@ -8,7 +8,7 @@ constexpr const char name[] = "cgemma.scheduler";
 
 int cpu_topology(lua_State* L) {
   auto sched = cgemma::scheduler::check(L, 1);
-  lua_pushstring(L, sched->pools().TopologyString());
+  lua_pushstring(L, sched->cpu_topology());
   return 1;
 }
 
@@ -17,28 +17,17 @@ int destroy(lua_State* L) {
   return 0;
 }
 
-std::unique_ptr<gcpp::NestedPools> make_pools(const gcpp::AppArgs& args) {
-  auto pools = std::make_unique<gcpp::NestedPools>(
-    args.max_threads, args.pin,
-    gcpp::BoundedSlice(args.skip_packages, args.max_packages),
-    gcpp::BoundedSlice(args.skip_clusters, args.max_clusters),
-    gcpp::BoundedSlice(args.skip_lps, args.max_lps)
-  );
-  gcpp::Allocator::Init(pools->Topology());
-  return pools;
-}
-
 }
 
 namespace cgemma {
 
 scheduler::scheduler() {
-  pools_ = make_pools(args_);
+  init();
 }
 
 scheduler::scheduler(int args, char* argv[])
   : args_(args, argv) {
-  pools_ = make_pools(args_);
+  init();
 }
 
 void scheduler::declare(lua_State* L) {
@@ -47,7 +36,7 @@ void scheduler::declare(lua_State* L) {
     {nullptr, nullptr}
   };
   constexpr const luaL_Reg methods[] = {
-    {"cpu_topology", cpu_topology},
+    {"cpu_topology", ::cpu_topology},
     {nullptr, nullptr}
   };
   luaL_newmetatable(L, name);
@@ -103,6 +92,17 @@ int scheduler::create(lua_State* L) {
     lua_pushstring(L, e.what());
     return 2;
   }
+}
+
+void scheduler::init() {
+  topology_ = std::make_unique<gcpp::BoundedTopology>(
+    gcpp::BoundedSlice(args_.skip_packages, args_.max_packages),
+    gcpp::BoundedSlice(args_.skip_clusters, args_.max_clusters),
+    gcpp::BoundedSlice(args_.skip_lps, args_.max_lps)
+  );
+  gcpp::Allocator::Init(*topology_);
+  pools_ = std::make_unique<gcpp::NestedPools>(*topology_, args_.max_threads, args_.pin);
+  env_ = std::make_unique<gcpp::MatMulEnv>(*topology_, *pools_);
 }
 
 }
