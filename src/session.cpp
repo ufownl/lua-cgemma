@@ -344,11 +344,11 @@ std::vector<int> session::tokenize(const gcpp::ImageTokens& image, const char* t
       if (!inst_->model().Tokenizer().Encode("<end_of_image>\n\n", &eoi)) {
         throw std::runtime_error("Tokenizer encoding failed. (session::tokenize)");
       }
-      prompt.reserve(soi.size() + image.BatchSize() + eoi.size() + text_part.size());
+      prompt.reserve(text_part.size() + soi.size() + image.BatchSize() + eoi.size());
+      prompt.insert(prompt.cend(), text_part.cbegin(), text_part.cend());
       prompt.insert(prompt.cend(), soi.cbegin(), soi.cend());
       prompt.insert(prompt.cend(), image.BatchSize(), -2);
       prompt.insert(prompt.cend(), eoi.cbegin(), eoi.cend());
-      prompt.insert(prompt.cend(), text_part.cbegin(), text_part.cend());
       return tokenize_wrap(prompt);
     }
     default:
