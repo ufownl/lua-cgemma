@@ -34,7 +34,8 @@ function gemma_loop()
   end
   local bytes, err = ws:send_text(require("cjson.safe").encode({
     role = "system",
-    text = "New chat session started!"
+    text = "New chat session started!",
+    vlm_mode = config().vlm_mode
   }))
   if not bytes then
     ngx.log(ngx.ERR, "websocket error: ", err)
@@ -42,6 +43,16 @@ function gemma_loop()
   end
   while session:ready() do
     local data, tp, err = ws:recv_frame()
+    while err == "again" do
+      local frag, ct
+      frag, ct, err = ws:recv_frame()
+      if ct ~= "continuation" then
+        ngx.log(ngx.ERR, "websocket error: ", err)
+        ws:send_close()
+        return ngx.OK
+      end
+      data = data..frag
+    end
     if tp == "text" then
       local msg = require("cjson.safe").decode(data)
       if not msg or not msg.role then
@@ -50,8 +61,27 @@ function gemma_loop()
         return ngx.OK
       end
       if msg.role == "user" then
-        if msg.text then
-          local ok, err = session(msg.text, function(token, pos, prompt_size)
+        local embedded_image
+        if config().vlm_mode and msg.image then
+          local img_buf = ngx.decode_base64(msg.image)
+          if img_buf then
+            local img = require("vips").Image.new_from_buffer(img_buf)
+            if img then
+              img = img:resize(config().vlm_mode.resize_to / img:width(), {vscale = config().vlm_mode.resize_to / img:height(), kernel = "linear"})
+              local ppm = require("vips").Target.new_to_memory()
+              img:write_to_target(ppm, ".ppm")
+              local img_tks, err = gemma_inst():embed_image(ppm:vobject():get("blob"))
+              if not img_tks then
+                ngx.log(ngx.ERR, "cgemma error: ", err)
+                ws:send_close()
+                return ngx.OK
+              end
+              embedded_image = img_tks
+            end
+          end
+        end
+        if embedded_image or msg.text then
+          local function stream_fn(token, pos, prompt_size)
             local bytes, err = ws:send_text(require("cjson.safe").encode({
               role = "gemma",
               token = token,
@@ -63,7 +93,13 @@ function gemma_loop()
               return false
             end
             return true
-          end)
+          end
+          local ok, err
+          if embedded_image then
+            ok, err = session(embedded_image, msg.text or "", stream_fn)
+          else
+            ok, err = session(msg.text, stream_fn)
+          end
           if not ok then
             ngx.log(ngx.ERR, "cgemma error: ", err)
             ws:send_close()
