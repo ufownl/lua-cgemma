@@ -67,6 +67,15 @@ function gemma_loop()
           if img_buf then
             local img = require("vips").Image.new_from_buffer(img_buf)
             if img then
+              local bytes, err = ws:send_text(require("cjson.safe").encode({
+                role = "gemma",
+                pos = -2,
+                prompt_size = 0
+              }))
+              if not bytes then
+                ngx.log(ngx.ERR, "websocket error: ", err)
+                return ngx.OK
+              end
               img = img:resize(config().vlm_mode.resize_to / img:width(), {vscale = config().vlm_mode.resize_to / img:height(), kernel = "linear"})
               local ppm = require("vips").Target.new_to_memory()
               img:write_to_target(ppm, ".ppm")
@@ -81,6 +90,15 @@ function gemma_loop()
           end
         end
         if embedded_image or msg.text then
+          local bytes, err = ws:send_text(require("cjson.safe").encode({
+            role = "gemma",
+            pos = -1,
+            prompt_size = 0
+          }))
+          if not bytes then
+            ngx.log(ngx.ERR, "websocket error: ", err)
+            return ngx.OK
+          end
           local function stream_fn(token, pos, prompt_size)
             local bytes, err = ws:send_text(require("cjson.safe").encode({
               role = "gemma",
