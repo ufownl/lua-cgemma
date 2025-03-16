@@ -1,7 +1,8 @@
 function config()
   return {
     scheduler = {
-      num_threads = 2
+      num_threads = 2,
+      pin = 0
     },
     gemma = {
       tokenizer = "tokenizer.spm",
