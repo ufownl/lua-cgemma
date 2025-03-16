@@ -11,7 +11,7 @@ function config()
     },
     session = {
       temperature = 0.4,
-      top_k = 50
+      top_k = 5
     },
     websocket = {
       max_payload_len = 65536,

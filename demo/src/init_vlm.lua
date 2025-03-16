@@ -13,7 +13,7 @@ function config()
     },
     session = {
       temperature = 0.4,
-      top_k = 50
+      top_k = 5
     },
     vlm_mode = {
       max_file_size = 1024 * 1024 * 2.5,

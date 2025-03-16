@@ -54,7 +54,7 @@ local function implement(...)
       error("Opoos! "..err)
     end
     table.insert(funcs, function(...)
-      local session, err = gemma:session({top_k = 50})
+      local session, err = gemma:session({top_k = 5})
       if not session then
         error("Opoos! "..err)
       end
