@@ -54,8 +54,14 @@
         <el-popover ref="suggestions" placement="top-end" trigger="focus" title="Suggestions" :disabled="!suggestions">
           <el-button v-for="(sgt, idx) in suggestions" :key="'sgt_' + idx" type="text" @click="text=sgt">{{ sgt }}</el-button>
         </el-popover>
-        <el-input v-model="text" v-popover:suggestions placeholder="Enter your message here" :disabled="!ws" @keyup.enter.native="sendText">
-          <el-button slot="append" :disabled="!text" @click="sendText">Send</el-button>
+        <el-input v-model="text" v-popover:suggestions placeholder="Enter your message here" :disabled="!ws" @keyup.enter.native="sendMessage">
+          <template v-if="vlm" slot="prepend">
+            <el-upload class="image-uploader" :file-list="selectedFiles" :limit="1" :show-file-list="false" :auto-upload="false" accept="image/*" :on-change="selectImage">
+              <img v-if="image" class="image" :src="imageUrl" />
+              <span v-else class="el-icon-picture-outline image-uploader-icon" />
+            </el-upload>
+          </template>
+          <el-button slot="append" :disabled="!text" @click="sendMessage">Send</el-button>
         </el-input>
       </p>
     </div>
@@ -85,13 +91,16 @@
       return {
         clientHeight: 0,
         clientWidth: 0,
-        ws: null,
+        ws: undefined,
+        vlm: undefined,
+        selectedFiles: [],
         messages: [{role: 'system', text: 'Loading model...'}],
         suggestions: [
           'What is lua-cgemma?',
           'Who developed lua-cgemma?',
           'How can I install lua-cgemma?'
         ],
+        image: undefined,
         text: ''
       }
     },
@@ -109,6 +118,9 @@
           height: this.clientHeight - 90 + 'px',
           overflow: 'auto'
         }
+      },
+      imageUrl() {
+        return URL.createObjectURL(this.image)
       }
     },
     mounted() {
@@ -124,14 +136,14 @@
           role: 'error',
           text: 'Connection error!'
         })
-        this.ws = null
+        this.ws = undefined
       }
       ws.onclose = evt => {
         this.messages.push({
           role: 'error',
           text: 'Connection closed!'
         })
-        this.ws = null
+        this.ws = undefined
       }
       ws.onopen = evt => {
         ws.onmessage = evt => {
@@ -142,19 +154,60 @@
       }
     },
     methods: {
-      sendText() {
-        if (this.text) {
-          const msg = {
+      selectImage(file) {
+        this.selectedFiles = []
+        this.image = undefined
+        if (file.size > this.vlm.max_file_size) {
+          this.messages.push({
+            role: 'error',
+            text: 'Image size cannot exceed ' + this.vlm.max_file_size / (1024 * 1024) + 'MB!'
+          })
+          return
+        }
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          this.image = new Blob([e.target.result], { type: file.raw.type });
+        }
+        reader.readAsArrayBuffer(file.raw);
+      },
+      sendMessage() {
+        if (!this.text) {
+          return
+        }
+        if (this.image) {
+          const txt = this.text
+          this.image.arrayBuffer().then(buf => {
+            const arr = new Uint8Array(buf);
+            let bin = '';
+            arr.forEach(v => {
+              bin += String.fromCharCode(v)
+            })
+            this.ws.send(JSON.stringify({
+              role: 'user',
+              image: btoa(bin),
+              text: txt
+            }))
+          })
+          this.messages.push({
+            role: 'user',
+            text: '![msg_img](' + this.imageUrl + ')\n\n' + txt,
+            markdown: true
+          })
+        } else {
+          this.ws.send(JSON.stringify({
+            role: 'user',
+            text: this.text
+          }))
+          this.messages.push({
             role: 'user',
             text: this.text,
             markdown: true
-          }
-          this.ws.send(JSON.stringify(msg))
-          this.messages.push(msg)
-          this.suggestions = null
-          this.text = ''
-          this.autoScroll()
+          })
         }
+        this.suggestions = undefined
+        this.image = undefined
+        this.text = ''
+        this.autoScroll()
       },
       keepalive() {
         setTimeout(() => {
@@ -166,6 +219,7 @@
       },
       handleMessage(msg) {
         if (msg.role === 'system') {
+          this.vlm = msg.vlm_mode
           this.messages.push(msg)
         } else if (msg.role === 'gemma') {
           if (msg.pos === 0) {
