@@ -315,9 +315,6 @@ std::vector<int> session::tokenize(const char* text, size_t len) const {
 }
 
 std::vector<int> session::tokenize(const gcpp::ImageTokens& image, const char* text, size_t len) const {
-  if (no_wrapping_) {
-    throw std::invalid_argument("No wrapping mode does not support images.");
-  }
   auto text_part = tokenize_text(std::string(text, len));
   std::vector<int> prompt;
   switch (inst_->model().Info().wrapping) {
@@ -344,12 +341,18 @@ std::vector<int> session::tokenize(const gcpp::ImageTokens& image, const char* t
       if (!inst_->model().Tokenizer().Encode("<end_of_image>\n\n", &eoi)) {
         throw std::runtime_error("Tokenizer encoding failed. (session::tokenize)");
       }
-      prompt.reserve(text_part.size() + soi.size() + image.BatchSize() + eoi.size());
+      const auto prompt_size = text_part.size() + soi.size() + image.BatchSize() + eoi.size();
+      if (no_wrapping_ && pos_ == 0) {
+        prompt.reserve(1 + prompt_size);
+        prompt.push_back(gcpp::BOS_ID);
+      } else {
+        prompt.reserve(prompt_size);
+      }
       prompt.insert(prompt.cend(), text_part.cbegin(), text_part.cend());
       prompt.insert(prompt.cend(), soi.cbegin(), soi.cend());
       prompt.insert(prompt.cend(), image.BatchSize(), -2);
       prompt.insert(prompt.cend(), eoi.cbegin(), eoi.cend());
-      return tokenize_wrap(prompt);
+      return no_wrapping_ ? prompt : tokenize_wrap(prompt);
     }
     default:
       throw std::invalid_argument("Current variant does not support images.");
