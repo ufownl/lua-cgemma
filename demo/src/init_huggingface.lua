@@ -15,11 +15,11 @@ function config()
       top_k = 5
     },
     vlm_mode = {
-      max_file_size = 1024 * 1024 * 2.5,
+      max_file_size = 1024 * 1024 * 4,
       resize_to = 896
     },
     websocket = {
-      max_payload_len = 1024 * 1024 * 4,
+      max_payload_len = 1024 * 1024 * 8,
       timeout = 300000
     }
   }
