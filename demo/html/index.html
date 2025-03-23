@@ -95,7 +95,7 @@
         open_url: ({ URL }) => {
           window.open(URL, '_blank')
         },
-        save_code_to_file: ({ code, file_name }) => {
+        write_code_to_file: ({ code, file_name }) => {
           const link = document.createElement('a')
           link.href = 'data:text/plain;base64,' + btoa(code)
           link.download = file_name

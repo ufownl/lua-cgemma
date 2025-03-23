@@ -26,8 +26,8 @@ You SHOULD NOT include any other text in the response if you call a function
     }
   },
   {
-    "name": "save_code_to_file",
-    "description": "Save the code block to a file.",
+    "name": "write_code_to_file",
+    "description": "Write the code to a file directly.",
     "parameters": {
       "type": "object",
       "properties": {
