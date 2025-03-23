@@ -91,6 +91,19 @@
   new Vue({
     el: '#app',
     data() {
+      const functions = {
+        open_url: ({ URL }) => {
+          window.open(URL, '_blank')
+        },
+        save_code_to_file: ({ code, file_name }) => {
+          const link = document.createElement('a')
+          link.href = 'data:text/plain;base64,' + btoa(code)
+          link.download = file_name
+          document.body.appendChild(link)
+          link.click()
+          document.body.removeChild(link)
+        }
+      }
       return {
         clientHeight: 0,
         clientWidth: 0,
@@ -103,6 +116,7 @@
           'reading what you said ...',
           'viewing your image ...'
         ],
+        functions,
         suggestions: [
           'What is lua-cgemma?',
           'Who developed lua-cgemma?',
@@ -250,6 +264,7 @@
                 text: lastMsg.text + msg.token
               })
             } else {
+              this.callFunctions(lastMsg.text)
               this.messages.splice(lastMsgIdx, 1, {
                 role: msg.role,
                 text: lastMsg.text,
@@ -263,6 +278,29 @@
           }
         }
         this.autoScroll()
+      },
+      callFunctions(content) {
+        let fn = undefined
+        content.split('\n').forEach(line => {
+          if (typeof(fn) === 'string') {
+            if (line == '```') {
+              try {
+                const fnObj = JSON.parse(fn)
+                if (fnObj.name && fnObj.parameters && this.functions[fnObj.name]) {
+                  this.functions[fnObj.name](fnObj.parameters)
+                }
+              } catch (err) {
+                console.log(err)
+              } finally {
+                fn = undefined
+              }
+            } else {
+              fn += line
+            }
+          } else if (line == '```json') {
+            fn = ''
+          }
+        })
       },
       autoScroll() {
         this.$nextTick(() => {
