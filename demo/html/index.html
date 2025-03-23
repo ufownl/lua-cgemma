@@ -230,42 +230,35 @@
           this.vlm = msg.vlm_mode
           this.messages.push(msg)
         } else if (msg.role === 'gemma') {
+          const lastMsgIdx = this.messages.findLastIndex(x => x.role === msg.role)
+          const lastMsg = lastMsgIdx < 0 ? undefined : this.messages[lastMsgIdx]
           if (msg.pos <= 0) {
-            const lastMsg = this.messages.findLast(x => x.role === msg.role)
+            const newMsg = {
+              role: msg.role,
+              text: '',
+              status: this.statuses[-msg.pos]
+            }
             if (lastMsg && lastMsg.text === '') {
-              lastMsg.status = this.statuses[-msg.pos]
+              this.messages.splice(lastMsgIdx, 1, newMsg)
             } else {
-              this.messages.push({
-                role: msg.role,
-                text: '',
-                status: this.statuses[-msg.pos]
-              })
+              this.messages.push(newMsg)
             }
           } else if (msg.pos >= msg.prompt_size) {
-            const poppedMsgs = []
-            let lastMsg = this.messages.pop()
-            while (lastMsg.role !== msg.role) {
-              poppedMsgs.push(lastMsg)
-              lastMsg = this.messages.pop()
-            }
             if (msg.token) {
-              this.messages.push({
+              this.messages.splice(lastMsgIdx, 1, {
                 role: msg.role,
                 text: lastMsg.text + msg.token
               })
             } else {
-              this.messages.push({
+              this.messages.splice(lastMsgIdx, 1, {
                 role: msg.role,
                 text: lastMsg.text,
                 markdown: true
               })
-              const content = this.$refs['msg_content_' + (this.messages.length - 1)][0]
+              const content = this.$refs['msg_content_' + lastMsgIdx][0]
               this.$nextTick(() => {
                 Prism.highlightAllUnder(content)
               })
-            }
-            while (poppedMsgs.length > 0) {
-              this.messages.push(poppedMsgs.pop())
             }
           }
         }
