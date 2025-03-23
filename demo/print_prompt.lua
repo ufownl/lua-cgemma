@@ -17,11 +17,12 @@ if args.help then
   print("Usage: resty print_prompt.lua [options]")
   print()
   print("Available options:")
+  print("  --template: Path of the prompt template. (default: prompt_template.md)")
   print("  --brief: Print the brief version.")
   return
 end
 
-local template, err = io.open("prompt_template.md")
+local template, err = io.open(args.template or "prompt_template.md")
 if not template then
   error(err)
 end
