@@ -52,7 +52,7 @@ end
 while true do
   print("New conversation started")
 
-  -- Multi-turn chat
+  -- Multi-turn chat loop
   while session:ready() do
     io.write("> ")
     local text = io.read()
@@ -60,6 +60,7 @@ while true do
       print("End of file")
       return
     end
+    -- Generate reply
     local reply, err = session(text)
     if not reply then
       error("Opoos! "..err)
