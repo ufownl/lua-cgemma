@@ -44,7 +44,7 @@ int stream_mode(lua_State* L, cgemma::session* sess, const gcpp::ImageTokens* im
     lua_pushvalue(L, stream_fn);
     if (pos - start_pos < prompt_size) {
       lua_pushnil(L);
-    } else if (token == gcpp::EOS_ID || sess->inst()->instruction_tuned() && token == sess->inst()->eot_id()) {
+    } else if (sess->inst()->eos(token)) {
       eot = true;
       lua_pushnil(L);
     } else {
@@ -81,7 +81,7 @@ int normal_mode(lua_State* L, cgemma::session* sess, const gcpp::ImageTokens* im
   output.reserve(sess->args().max_generated_tokens);
   generate(sess, image, prompt, [&](size_t, size_t pos, int token, float) {
     if (pos - start_pos >= prompt_size) {
-      if (token == gcpp::EOS_ID || sess->inst()->instruction_tuned() && token == sess->inst()->eot_id()) {
+      if (sess->inst()->eos(token)) {
         return false;
       }
       output.push_back(token);

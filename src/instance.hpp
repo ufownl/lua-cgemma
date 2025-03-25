@@ -23,10 +23,10 @@ public:
   const gcpp::LoaderArgs& args() const { return args_; }
   std::mt19937& rnd() { return rnd_; }
   gcpp::Gemma& model() const { return *model_; }
-  int eot_id() const { return eot_id_; }
   const std::unordered_set<int>& disabled_tokens() const { return disabled_tokens_; }
   size_t max_tokens() const { return model_->GetModelConfig().seq_len; }
   bool instruction_tuned() const;
+  bool eos(int token) const;
 
   static void declare(lua_State* L);
   static instance* check(lua_State* L, int index);
@@ -37,7 +37,6 @@ private:
   std::mt19937 rnd_;
   std::unique_ptr<scheduler> default_sched_;
   std::unique_ptr<gcpp::Gemma> model_;
-  int eot_id_;
   std::unordered_set<int> disabled_tokens_;
 };
 
