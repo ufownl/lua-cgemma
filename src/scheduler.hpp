@@ -4,6 +4,7 @@
 #include <lua.hpp>
 #include <util/app.h>
 #include <util/threading.h>
+#include <ops/matmul.h>
 #include <memory>
 
 namespace cgemma {
@@ -13,7 +14,8 @@ public:
   scheduler();
   scheduler(int argc, char* argv[]);
 
-  gcpp::NestedPools& pools() { return *pools_; }
+  const char* cpu_topology() const { return topology_->TopologyString(); }
+  gcpp::MatMulEnv& env() { return *env_; }
 
   static void declare(lua_State* L);
   static scheduler* to(lua_State* L, int index);
@@ -21,8 +23,12 @@ public:
   static int create(lua_State* L);
 
 private:
+  void init();
+
   gcpp::AppArgs args_;
+  std::unique_ptr<const gcpp::BoundedTopology> topology_;
   std::unique_ptr<gcpp::NestedPools> pools_;
+  std::unique_ptr<gcpp::MatMulEnv> env_;
 };
 
 }

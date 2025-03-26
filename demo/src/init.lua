@@ -1,7 +1,8 @@
 function config()
   return {
     scheduler = {
-      num_threads = 2
+      num_threads = 2,
+      pin = 0
     },
     gemma = {
       tokenizer = "tokenizer.spm",
@@ -10,7 +11,7 @@ function config()
     },
     session = {
       temperature = 0.4,
-      top_k = 50
+      top_k = 5
     },
     websocket = {
       max_payload_len = 65536,

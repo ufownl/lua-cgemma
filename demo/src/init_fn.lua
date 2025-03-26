@@ -1,13 +1,15 @@
 function config()
   return {
-    scheduler = {},
+    scheduler = {
+      num_threads = 6,
+      pin = 0
+    },
     gemma = {
       tokenizer = "tokenizer.spm",
-      model = "gemma3-4b",
-      weights = "4b-it-sfp.sbs"
+      model = "gemma3-12b",
+      weights = "12b-it-sfp.sbs"
     },
     session = {
-      prefill_tbatch = 64,
       temperature = 0.4,
       top_k = 5
     },

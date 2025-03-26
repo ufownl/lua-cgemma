@@ -1,18 +1,26 @@
+require("vips")
+
 function config()
   return {
-    scheduler = {},
+    scheduler = {
+      num_threads = 6,
+      pin = 0
+    },
     gemma = {
       tokenizer = "tokenizer.spm",
       model = "gemma3-4b",
       weights = "4b-it-sfp.sbs"
     },
     session = {
-      prefill_tbatch = 64,
       temperature = 0.4,
       top_k = 5
     },
+    vlm_mode = {
+      max_file_size = 1024 * 1024 * 4,
+      resize_to = 896
+    },
     websocket = {
-      max_payload_len = 65536,
+      max_payload_len = 1024 * 1024 * 8,
       timeout = 300000
     }
   }

@@ -44,15 +44,10 @@ instance::instance(int argc, char* argv[], unsigned int seed, scheduler* sched)
     sched = default_sched_.get();
   }
   if (args_.Info().weight == gcpp::Type::kUnknown || args_.Info().model == gcpp::Model::UNKNOWN || args_.tokenizer.path.empty()) {
-    model_ = std::make_unique<gcpp::Gemma>(args_.weights, sched->pools());
+    model_ = std::make_unique<gcpp::Gemma>(args_.weights, sched->env());
   } else {
-    model_ = std::make_unique<gcpp::Gemma>(args_.tokenizer, args_.weights, args_.Info(), sched->pools());
+    model_ = std::make_unique<gcpp::Gemma>(args_.tokenizer, args_.weights, args_.Info(), sched->env());
   }
-  std::vector<int> ids;
-  if (!model_->Tokenizer().Encode("<end_of_turn>", &ids)) {
-    throw std::runtime_error("Tokenizer encoding failed. (instance::instance)");
-  }
-  eot_id_ = ids.front();
 }
 
 bool instance::instruction_tuned() const {
@@ -63,6 +58,10 @@ bool instance::instruction_tuned() const {
     default:
       return false;
   };
+}
+
+bool instance::eos(int token) const {
+  return token == model_->GetModelConfig().eos_id || instruction_tuned() && token == model_->GetModelConfig().secondary_eos_id;
 }
 
 void instance::declare(lua_State* L) {

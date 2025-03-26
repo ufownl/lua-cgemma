@@ -17,11 +17,12 @@ if args.help then
   print("Usage: resty print_prompt.lua [options]")
   print()
   print("Available options:")
+  print("  --template: Path of the prompt template. (default: prompt_template.md)")
   print("  --brief: Print the brief version.")
   return
 end
 
-local template, err = io.open("prompt_template.md")
+local template, err = io.open(args.template or "prompt_template.md")
 if not template then
   error(err)
 end
@@ -41,11 +42,11 @@ if args.brief then
     end
     if state == 0 then
       content = content..line.."\n"
-      if line == "## Usage" then
+      if line == "### APIs for Lua" then
         state = 1
       end
     elseif state == 1 then
-      if line == "## License" then
+      if line == "### Migrating to single-file weights format" then
         content = content.."\nPlease see [README.md](https://github.com/ufownl/lua-cgemma/blob/stable/README.md) for more details.\n\n"..line.."\n"
         state = 2
       end

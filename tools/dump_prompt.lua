@@ -37,8 +37,13 @@ if args.help then
   print("    gemma3-27b = Gemma3 27B parameters")
   print("  --weights: Path of model weights file. (default: 4b-it-sfp.sbs)")
   print("  --weight_type: Weight type (default: sfp)")
+  print("  --max_generated_tokens: Maximum number of tokens to generate. (default: 2048)")
   print("  --prefill_tbatch: Maximum batch size during prefill phase (default: 256)")
+  print("  --temperature: Temperature for top-K. (default: 1.0)")
+  print("  --top_k: Number of top-K tokens to sample from. (default: 1)")
+  print("  --image: Path of image file (PPM format: P6, binary).")
   print("  --kv_cache: Path of KV cache file.")
+  print("  --gen: Enable generation phase.")
   print("  --output: Path of output file. (default: dump.bin)")
   print("  --num_threads: Maximum number of threads to use, 0 = unlimited. (default: 0)")
   print("  --pin: Pin threads? -1 = auto, 0 = no, 1 = yes. (default: -1)")
@@ -80,10 +85,21 @@ if not gemma then
   error("Opoos! "..err)
 end
 
+local image, err
+if args.image then
+  print("Embedding image ...")
+  image, err = gemma:embed_image(args.image)
+  if not image then
+    error("Opoos! "..err)
+  end
+end
+
 -- Create a session
 local session, err = gemma:session({
-  max_generated_tokens = 1,
+  max_generated_tokens = args.max_generated_tokens,
   prefill_tbatch = args.prefill_tbatch,
+  temperature = args.temperature,
+  top_k = args.top_k,
   no_wrapping = true
 })
 if not session then
@@ -100,15 +116,38 @@ if args.kv_cache then
 end
 
 print("Reading prompt ...")
-local prompt = io.read("*a")
-local ok, err = session(prompt, function(token, pos, prompt_size)
-  if pos >= prompt_size then
-    return false
+local stream_fn
+if args.gen then
+  stream_fn = function(token, pos, prompt_size)
+    if pos < prompt_size then
+      io.write(string.format("%d / %d\r", pos + 1, prompt_size))
+    elseif token then
+      if pos == prompt_size then
+        io.write("\nreply: ")
+      end
+      io.write(token)
+    else
+      print()
+    end
+    io.flush()
+    return true
   end
-  io.write(string.format("%d / %d\r", pos + 1, prompt_size))
-  io.flush()
-  return true
-end)
+else
+  stream_fn = function(token, pos, prompt_size)
+    if pos >= prompt_size then
+      return false
+    end
+    io.write(string.format("%d / %d\r", pos + 1, prompt_size))
+    io.flush()
+    return true
+  end
+end
+local ok, err
+if image then
+  ok, err = session(image, io.read("*a"), stream_fn)
+else
+  ok, err = session(io.read("*a"), stream_fn)
+end
 if not ok then
   error("Opoos! "..err)
 end

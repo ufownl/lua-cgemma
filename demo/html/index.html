@@ -37,7 +37,10 @@
               <div v-else>
                 <div style="margin-bottom:10px">
                   <b v-if="msg.role === 'user'" style="color:Chocolate">You</b>
-                  <b v-else>Gemma</b>
+                  <div v-else>
+                    <b style="margin-right:10px">Gemma</b>
+                    <i v-if="msg.status" style="color:#909399">{{ msg.status }}</i>
+                  </div>
                 </div>
                 <div :ref="'msg_content_' + idx" class="bubble">
                   <vue-markdown v-if="msg.markdown" :linkify="false">{{ msg.text }}</vue-markdown>
@@ -54,8 +57,14 @@
         <el-popover ref="suggestions" placement="top-end" trigger="focus" title="Suggestions" :disabled="!suggestions">
           <el-button v-for="(sgt, idx) in suggestions" :key="'sgt_' + idx" type="text" @click="text=sgt">{{ sgt }}</el-button>
         </el-popover>
-        <el-input v-model="text" v-popover:suggestions placeholder="Enter your message here" :disabled="!ws" @keyup.enter.native="sendText">
-          <el-button slot="append" :disabled="!text" @click="sendText">Send</el-button>
+        <el-input v-model="text" v-popover:suggestions placeholder="Enter your message here" :disabled="!ws" @keyup.enter.native="sendMessage">
+          <template v-if="vlm" slot="prepend">
+            <el-upload class="image-uploader" :file-list="selectedFiles" :limit="1" :show-file-list="false" :auto-upload="false" accept="image/*" :on-change="selectImage">
+              <img v-if="image" class="image" :src="imageUrl" />
+              <span v-else class="el-icon-picture-outline image-uploader-icon" />
+            </el-upload>
+          </template>
+          <el-button slot="append" :disabled="!text" @click="sendMessage">Send</el-button>
         </el-input>
       </p>
     </div>
@@ -82,16 +91,38 @@
   new Vue({
     el: '#app',
     data() {
+      const functions = {
+        open_url: ({ URL }) => {
+          window.open(URL, '_blank')
+        },
+        write_code_to_file: ({ code, file_name }) => {
+          const link = document.createElement('a')
+          link.href = 'data:text/plain;base64,' + btoa(code)
+          link.download = file_name
+          document.body.appendChild(link)
+          link.click()
+          document.body.removeChild(link)
+        }
+      }
       return {
         clientHeight: 0,
         clientWidth: 0,
-        ws: null,
+        ws: undefined,
+        vlm: undefined,
+        selectedFiles: [],
         messages: [{role: 'system', text: 'Loading model...'}],
+        statuses: [
+          undefined,
+          'reading what you said ...',
+          'viewing your image ...'
+        ],
+        functions,
         suggestions: [
           'What is lua-cgemma?',
           'Who developed lua-cgemma?',
           'How can I install lua-cgemma?'
         ],
+        image: undefined,
         text: ''
       }
     },
@@ -109,6 +140,9 @@
           height: this.clientHeight - 90 + 'px',
           overflow: 'auto'
         }
+      },
+      imageUrl() {
+        return URL.createObjectURL(this.image)
       }
     },
     mounted() {
@@ -124,14 +158,14 @@
           role: 'error',
           text: 'Connection error!'
         })
-        this.ws = null
+        this.ws = undefined
       }
       ws.onclose = evt => {
         this.messages.push({
           role: 'error',
           text: 'Connection closed!'
         })
-        this.ws = null
+        this.ws = undefined
       }
       ws.onopen = evt => {
         ws.onmessage = evt => {
@@ -142,19 +176,60 @@
       }
     },
     methods: {
-      sendText() {
-        if (this.text) {
-          const msg = {
+      selectImage(file) {
+        this.selectedFiles = []
+        this.image = undefined
+        if (file.size > this.vlm.max_file_size) {
+          this.messages.push({
+            role: 'error',
+            text: 'Image size cannot exceed ' + this.vlm.max_file_size / (1024 * 1024) + 'MB!'
+          })
+          return
+        }
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          this.image = new Blob([e.target.result], { type: file.raw.type });
+        }
+        reader.readAsArrayBuffer(file.raw);
+      },
+      sendMessage() {
+        if (!this.text) {
+          return
+        }
+        if (this.image) {
+          const txt = this.text
+          this.image.arrayBuffer().then(buf => {
+            const arr = new Uint8Array(buf);
+            let bin = '';
+            arr.forEach(v => {
+              bin += String.fromCharCode(v)
+            })
+            this.ws.send(JSON.stringify({
+              role: 'user',
+              image: btoa(bin),
+              text: txt
+            }))
+          })
+          this.messages.push({
+            role: 'user',
+            text: '![msg_img](' + this.imageUrl + ')\n\n' + txt,
+            markdown: true
+          })
+        } else {
+          this.ws.send(JSON.stringify({
+            role: 'user',
+            text: this.text
+          }))
+          this.messages.push({
             role: 'user',
             text: this.text,
             markdown: true
-          }
-          this.ws.send(JSON.stringify(msg))
-          this.messages.push(msg)
-          this.suggestions = null
-          this.text = ''
-          this.autoScroll()
+          })
         }
+        this.suggestions = undefined
+        this.image = undefined
+        this.text = ''
+        this.autoScroll()
       },
       keepalive() {
         setTimeout(() => {
@@ -166,42 +241,66 @@
       },
       handleMessage(msg) {
         if (msg.role === 'system') {
+          this.vlm = msg.vlm_mode
           this.messages.push(msg)
         } else if (msg.role === 'gemma') {
-          if (msg.pos === 0) {
-            this.messages.push({
+          const lastMsgIdx = this.messages.findLastIndex(x => x.role === msg.role)
+          const lastMsg = lastMsgIdx < 0 ? undefined : this.messages[lastMsgIdx]
+          if (msg.pos <= 0) {
+            const newMsg = {
               role: msg.role,
-              text: ''
-            })
-          } else if (msg.pos >= msg.prompt_size) {
-            const popped_messages = []
-            let last_msg = this.messages.pop()
-            while (last_msg.role !== msg.role) {
-              popped_messages.push(last_msg)
-              last_msg = this.messages.pop()
+              text: '',
+              status: this.statuses[-msg.pos]
             }
+            if (lastMsg && lastMsg.text === '') {
+              this.messages.splice(lastMsgIdx, 1, newMsg)
+            } else {
+              this.messages.push(newMsg)
+            }
+          } else if (msg.pos >= msg.prompt_size) {
             if (msg.token) {
-              this.messages.push({
+              this.messages.splice(lastMsgIdx, 1, {
                 role: msg.role,
-                text: last_msg.text + msg.token
+                text: lastMsg.text + msg.token
               })
             } else {
-              this.messages.push({
+              this.callFunctions(lastMsg.text)
+              this.messages.splice(lastMsgIdx, 1, {
                 role: msg.role,
-                text: last_msg.text,
+                text: lastMsg.text,
                 markdown: true
               })
-              const content = this.$refs['msg_content_' + (this.messages.length - 1)][0]
+              const content = this.$refs['msg_content_' + lastMsgIdx][0]
               this.$nextTick(() => {
                 Prism.highlightAllUnder(content)
               })
             }
-            while (popped_messages.length > 0) {
-              this.messages.push(popped_messages.pop())
-            }
           }
         }
         this.autoScroll()
+      },
+      callFunctions(content) {
+        let fn = undefined
+        content.split('\n').forEach(line => {
+          if (typeof(fn) === 'string') {
+            if (line == '```') {
+              try {
+                const fnObj = JSON.parse(fn)
+                if (fnObj.name && fnObj.parameters && this.functions[fnObj.name]) {
+                  this.functions[fnObj.name](fnObj.parameters)
+                }
+              } catch (err) {
+                console.log(err)
+              } finally {
+                fn = undefined
+              }
+            } else {
+              fn += line
+            }
+          } else if (line == '```json') {
+            fn = ''
+          }
+        })
       },
       autoScroll() {
         this.$nextTick(() => {
