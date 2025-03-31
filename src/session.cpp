@@ -305,7 +305,7 @@ session::session(instance* inst, int argc, char* argv[], bool no_wrapping)
 std::vector<int> session::tokenize(const char* text, size_t len) const {
   auto prompt = tokenize_text(std::string(text, len));
   if (!no_wrapping_ && inst_->instruction_tuned()) {
-    return tokenize_wrap(prompt);
+    return inst_->model().ChatTemplate().Apply(pos_, prompt);
   } else {
     if (pos_ == 0) {
       prompt.insert(prompt.cbegin(), gcpp::BOS_ID);
@@ -316,46 +316,15 @@ std::vector<int> session::tokenize(const char* text, size_t len) const {
 
 std::vector<int> session::tokenize(const gcpp::ImageTokens& image, const char* text, size_t len) const {
   auto text_part = tokenize_text(std::string(text, len));
-  std::vector<int> prompt;
   switch (inst_->model().Info().wrapping) {
-    case gcpp::PromptWrapping::PALIGEMMA: {
-      std::vector<int> sep;
-      if (!inst_->model().Tokenizer().Encode("\n", &sep)) {
-        throw std::runtime_error("Tokenizer encoding failed. (session::tokenize)");
-      }
-      prompt.reserve(image.BatchSize() + 1 + text_part.size() + sep.size());
-      prompt.resize(image.BatchSize(), PAD_ID);
-      prompt.push_back(gcpp::BOS_ID);
-      prompt.insert(prompt.cend(), text_part.cbegin(), text_part.cend());
-      prompt.insert(prompt.cend(), sep.cbegin(), sep.cend());
-      return prompt;
-    }
+    case gcpp::PromptWrapping::PALIGEMMA:
+      return inst_->model().ChatTemplate().WrapPali(text_part, image.BatchSize());
     case gcpp::PromptWrapping::GEMMA_VLM: {
-      std::vector<int> soi;
-      soi.reserve(2);
-      if (!inst_->model().Tokenizer().Encode("\n\n<start_of_image>", &soi)) {
-        throw std::runtime_error("Tokenizer encoding failed. (session::tokenize)");
-      }
-      std::vector<int> eoi;
-      eoi.reserve(2);
-      if (!inst_->model().Tokenizer().Encode("<end_of_image>\n\n", &eoi)) {
-        throw std::runtime_error("Tokenizer encoding failed. (session::tokenize)");
-      }
-      const auto prompt_size = text_part.size() + soi.size() + image.BatchSize() + eoi.size();
-      if (no_wrapping_ && pos_ == 0) {
-        prompt.reserve(1 + prompt_size);
-        prompt.push_back(gcpp::BOS_ID);
-      } else {
-        prompt.reserve(prompt_size);
-      }
-      prompt.insert(prompt.cend(), text_part.cbegin(), text_part.cend());
-      prompt.insert(prompt.cend(), soi.cbegin(), soi.cend());
-      prompt.insert(prompt.cend(), image.BatchSize(), -2);
-      prompt.insert(prompt.cend(), eoi.cbegin(), eoi.cend());
-      return no_wrapping_ ? prompt : tokenize_wrap(prompt);
+      auto prompt = inst_->model().ChatTemplate().WrapVLM(text_part, image.BatchSize());
+      return no_wrapping_ ? prompt : inst_->model().ChatTemplate().Apply(pos_, prompt);
     }
     default:
-      throw std::invalid_argument("Current variant does not support images.");
+      throw std::invalid_argument("Current variant does not support vision prompt.");
   }
 }
 
@@ -444,36 +413,6 @@ std::vector<int> session::tokenize_text(const std::string& text) const {
     }, UNK_ID);
   }
   return prompt;
-}
-
-std::vector<int> session::tokenize_wrap(const std::vector<int>& input) const {
-  std::vector<int> sot_user;
-  sot_user.reserve(3);
-  if (!inst_->model().Tokenizer().Encode("<start_of_turn>user\n", &sot_user)) {
-    throw std::runtime_error("Tokenizer encoding failed. (session::tokenize_wrap)");
-  }
-  std::vector<int> sot_model;
-  sot_model.reserve(3);
-  if (!inst_->model().Tokenizer().Encode("<start_of_turn>model\n", &sot_model)) {
-    throw std::runtime_error("Tokenizer encoding failed. (session::tokenize_wrap)");
-  }
-  std::vector<int> eot;
-  eot.reserve(2);
-  if (!inst_->model().Tokenizer().Encode("<end_of_turn>\n", &eot)) {
-    throw std::runtime_error("Tokenizer encoding failed. (session::tokenize_wrap)");
-  }
-  std::vector<int> output;
-  output.reserve(eot.size() + sot_user.size() + input.size() + eot.size() + sot_model.size());
-  if (pos_ > 0) {
-    output.insert(output.cend(), eot.cbegin(), eot.cend());
-  } else {
-    output.push_back(gcpp::BOS_ID);
-  }
-  output.insert(output.cend(), sot_user.cbegin(), sot_user.cend());
-  output.insert(output.cend(), input.cbegin(), input.cend());
-  output.insert(output.cend(), eot.cbegin(), eot.cend());
-  output.insert(output.cend(), sot_model.cbegin(), sot_model.cend());
-  return output;
 }
 
 void push_timing(lua_State*L, const gcpp::TimingInfo& timing) {
