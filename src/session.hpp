@@ -36,7 +36,6 @@ public:
 
 private:
   std::vector<int> tokenize_text(const std::string& text) const;
-  std::vector<int> tokenize_wrap(const std::vector<int>& tokens) const;
 
   instance* inst_;
   gcpp::InferenceArgs args_;
