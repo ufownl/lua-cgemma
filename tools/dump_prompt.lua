@@ -47,6 +47,7 @@ if args.help then
   print("  --output: Path of output file. (default: dump.bin)")
   print("  --num_threads: Maximum number of threads to use, 0 = unlimited. (default: 0)")
   print("  --pin: Pin threads? -1 = auto, 0 = no, 1 = yes. (default: -1)")
+  print("  --bind: Bind memory to sockets? -1 = auto, 0 = no, 1 = yes. (defaut: -1)")
   print("  --skip_packages: Index of the first socket to use, 0 = unlimited. (default: 0)")
   print("  --max_packages: Maximum number of sockets to use, 0 = unlimited. (default: 0)")
   print("  --skip_clusters: Index of the first CCX to use, 0 = unlimited. (default: 0)")
@@ -57,8 +58,8 @@ if args.help then
   return
 end
 
--- Create a scheduler instance
-local sched, err = require("cgemma").scheduler({
+-- Config global scheduler
+local ok, err = require("cgemma").scheduler.config({
   num_threads = args.num_threads,
   pin = args.pin,
   skip_packages = args.skip_packages,
@@ -68,7 +69,7 @@ local sched, err = require("cgemma").scheduler({
   skip_lps = args.skip_lps,
   max_lps = args.max_lps
 })
-if not sched then
+if not ok then
   error("Opoos! "..err)
 end
 
@@ -78,8 +79,7 @@ local gemma, err = require("cgemma").new({
   tokenizer = args.tokenizer or "tokenizer.spm",
   model = args.model or "gemma3-4b",
   weights = args.weights or "4b-it-sfp.sbs",
-  weight_type = args.weight_type,
-  scheduler = sched
+  weight_type = args.weight_type
 })
 if not gemma then
   error("Opoos! "..err)

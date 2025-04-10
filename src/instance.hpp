@@ -3,7 +3,7 @@
 
 #include <lua.hpp>
 #include <gemma/gemma.h>
-#include <util/app.h>
+#include <gemma/gemma_args.h>
 #include <unordered_set>
 #include <random>
 #include <memory>
@@ -13,12 +13,11 @@ namespace cgemma {
 constexpr const int PAD_ID = 0;
 constexpr const int UNK_ID = 3;
 
-class scheduler;
 class session;
 
 class instance {
 public:
-  instance(int argc, char* argv[], unsigned int seed, scheduler* sched);
+  instance(int argc, char* argv[], unsigned int seed);
 
   const gcpp::LoaderArgs& args() const { return args_; }
   std::mt19937& rnd() { return rnd_; }
@@ -35,7 +34,7 @@ public:
 private:
   gcpp::LoaderArgs args_;
   std::mt19937 rnd_;
-  std::unique_ptr<scheduler> default_sched_;
+  gcpp::MatMulEnv env_;
   std::unique_ptr<gcpp::Gemma> model_;
   std::unordered_set<int> disabled_tokens_;
 };

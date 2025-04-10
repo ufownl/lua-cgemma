@@ -71,7 +71,7 @@ int create(lua_State* L) {
     }
     auto model_cfg = inst->model().GetModelConfig();
     img.Resize(model_cfg.vit_config.image_size, model_cfg.vit_config.image_size);
-    gcpp::ImageTokens tks(gcpp::Extents2D(model_cfg.vit_config.seq_len / (model_cfg.vit_config.pool_dim * model_cfg.vit_config.pool_dim), model_cfg.model_dim));
+    gcpp::ImageTokens tks(inst->model().Env().ctx.allocator, gcpp::Extents2D(model_cfg.vit_config.seq_len / (model_cfg.vit_config.pool_dim * model_cfg.vit_config.pool_dim), model_cfg.model_dim));
     gcpp::RuntimeConfig cfg;
     cfg.gen = &inst->rnd();
     cfg.verbosity = 0;

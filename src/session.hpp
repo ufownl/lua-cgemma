@@ -3,8 +3,8 @@
 
 #include <lua.hpp>
 #include <gemma/gemma.h>
+#include <gemma/gemma_args.h>
 #include <paligemma/image.h>
-#include <util/app.h>
 #include <string>
 #include <vector>
 

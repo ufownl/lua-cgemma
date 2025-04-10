@@ -1,5 +1,4 @@
 #include "instance.hpp"
-#include "scheduler.hpp"
 #include "image_tokens.hpp"
 #include "session.hpp"
 #include <stdexcept>
@@ -33,20 +32,17 @@ int disabled_tokens(lua_State* L) {
 
 namespace cgemma {
 
-instance::instance(int argc, char* argv[], unsigned int seed, scheduler* sched)
+instance::instance(int argc, char* argv[], unsigned int seed)
   : args_(argc, argv)
-  , rnd_(seed) {
+  , rnd_(seed)
+  , env_(gcpp::ThreadingContext2::Get()) {
   if (auto err = args_.Validate()) {
     throw std::invalid_argument(err);
   }
-  if (!sched) {
-    default_sched_ = std::make_unique<scheduler>();
-    sched = default_sched_.get();
-  }
   if (args_.Info().weight == gcpp::Type::kUnknown || args_.Info().model == gcpp::Model::UNKNOWN || args_.tokenizer.path.empty()) {
-    model_ = std::make_unique<gcpp::Gemma>(args_.weights, sched->env());
+    model_ = std::make_unique<gcpp::Gemma>(args_.weights, env_);
   } else {
-    model_ = std::make_unique<gcpp::Gemma>(args_.tokenizer, args_.weights, args_.Info(), sched->env());
+    model_ = std::make_unique<gcpp::Gemma>(args_.tokenizer, args_.weights, args_.Info(), env_);
   }
 }
 
@@ -127,11 +123,8 @@ int instance::create(lua_State* L) {
       seed = rd();
     }
     lua_pop(L, 1);
-    lua_getfield(L, 1, "scheduler");
-    auto sched = scheduler::to(L, -1);
-    lua_pop(L, 1);
     auto ud = lua_newuserdata(L, sizeof(instance));
-    auto inst = new(ud) instance(argc, argv, seed, sched);
+    auto inst = new(ud) instance(argc, argv, seed);
     lua_getfield(L, 1, "disabled_words");
     if (lua_istable(L, -1)) {
       lua_pushnil(L);
