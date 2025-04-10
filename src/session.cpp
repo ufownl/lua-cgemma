@@ -394,6 +394,7 @@ int session::create(lua_State* L) {
     lua_setmetatable(L, -2);
     return 1;
   } catch (const std::exception& e) {
+    lua_pop(L, 1);
     lua_pushnil(L);
     lua_pushstring(L, e.what());
     return 2;

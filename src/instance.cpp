@@ -125,6 +125,8 @@ int instance::create(lua_State* L) {
     lua_pop(L, 1);
     auto ud = lua_newuserdata(L, sizeof(instance));
     auto inst = new(ud) instance(argc, argv, seed);
+    luaL_getmetatable(L, name);
+    lua_setmetatable(L, -2);
     lua_getfield(L, 1, "disabled_words");
     if (lua_istable(L, -1)) {
       lua_pushnil(L);
@@ -143,8 +145,6 @@ int instance::create(lua_State* L) {
       }
     }
     lua_pop(L, 1);
-    luaL_getmetatable(L, name);
-    lua_setmetatable(L, -2);
     return 1;
   } catch (const std::exception& e) {
     lua_pop(L, 1);

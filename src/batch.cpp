@@ -245,8 +245,9 @@ int batch(lua_State* L) {
       cfg.image_tokens = image;
     }
     auto timing = generate(inst, sess_ctxs, cfg);
+    batch_result result(std::move(sess_ctxs), std::move(timing));
     auto ud = lua_newuserdata(L, sizeof(batch_result));
-    new(ud) batch_result(std::move(sess_ctxs), std::move(timing));
+    new(ud) batch_result(std::move(result));
     luaL_getmetatable(L, name);
     lua_setmetatable(L, -2);
     return 1;
