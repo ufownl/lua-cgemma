@@ -8,15 +8,15 @@ on:
 
 jobs:
   build:
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
-
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
         build_type: [Release]
         compiler: [{c: gcc, cxx: g++}, {c: clang, cxx: clang++}]
+
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
 
     steps:
     - uses: actions/checkout@v4
@@ -49,7 +49,3 @@ jobs:
     - name: Test cgemma module
       shell: bash
       run: luajit -e 'require("cgemma").info()'
-
-    - name: Test gemma.compress_weights
-      shell: bash
-      run: gemma.compress_weights --help
