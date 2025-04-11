@@ -33,7 +33,7 @@ int disabled_tokens(lua_State* L) {
 namespace cgemma {
 
 instance::instance(int argc, char* argv[], unsigned int seed)
-  : args_(argc, argv)
+  : args_(argc, argv, false)
   , rnd_(seed) {
   if (auto err = args_.Validate()) {
     throw std::invalid_argument(err);
