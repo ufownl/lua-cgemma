@@ -34,15 +34,15 @@ namespace cgemma {
 
 instance::instance(int argc, char* argv[], unsigned int seed)
   : args_(argc, argv)
-  , rnd_(seed)
-  , env_(gcpp::ThreadingContext2::Get()) {
+  , rnd_(seed) {
   if (auto err = args_.Validate()) {
     throw std::invalid_argument(err);
   }
+  env_ = std::make_unique<gcpp::MatMulEnv>(gcpp::ThreadingContext2::Get());
   if (args_.Info().weight == gcpp::Type::kUnknown || args_.Info().model == gcpp::Model::UNKNOWN || args_.tokenizer.path.empty()) {
-    model_ = std::make_unique<gcpp::Gemma>(args_.weights, env_);
+    model_ = std::make_unique<gcpp::Gemma>(args_.weights, *env_);
   } else {
-    model_ = std::make_unique<gcpp::Gemma>(args_.tokenizer, args_.weights, args_.Info(), env_);
+    model_ = std::make_unique<gcpp::Gemma>(args_.tokenizer, args_.weights, args_.Info(), *env_);
   }
 }
 

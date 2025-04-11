@@ -34,7 +34,7 @@ public:
 private:
   gcpp::LoaderArgs args_;
   std::mt19937 rnd_;
-  gcpp::MatMulEnv env_;
+  std::unique_ptr<gcpp::MatMulEnv> env_;
   std::unique_ptr<gcpp::Gemma> model_;
   std::unordered_set<int> disabled_tokens_;
 };
