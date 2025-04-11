@@ -28,9 +28,7 @@ sudo make install
 
 **3rd step:** See [here](https://github.com/google/gemma.cpp?tab=readme-ov-file#step-1-obtain-model-weights-and-tokenizer-from-kaggle-or-hugging-face-hub) to learn how to obtain model weights and tokenizer.
 
-## Usage
-
-### Synopsis
+## Quickstart
 
 ```lua
 -- Create a Gemma instance
@@ -73,21 +71,21 @@ while true do
 end
 ```
 
-### APIs for Lua
+## APIs for Lua
 
-#### cgemma.info
+### cgemma.info
 
 **syntax:** `cgemma.info()`
 
 Show information of cgemma module.
 
-#### cgemma.scheduler
+### cgemma.scheduler.config
 
-**syntax:** `<cgemma.scheduler>sched, <string>err = cgemma.scheduler([<table>options])`
+**syntax:** `<boolean>ok, <string>err = cgemma.scheduler.config([<table>options])`
 
-Create a scheduler instance.
+Configure the backend scheduler.
 
-A successful call returns a scheduler instance. Otherwise, it returns `nil` and a string describing the error.
+A successful call returns `true`. Otherwise, it returns `false` and a string describing the error.
 
 Available options and default values:
 
@@ -95,6 +93,7 @@ Available options and default values:
 {
   num_threads = 0,  -- Maximum number of threads to use. (0 = unlimited)
   pin = -1,  -- Pin threads? (-1 = auto, 0 = no, 1 = yes)
+  bind = -1,  -- Bind memory to sockets? (-1 = auto, 0 = no, 1 = yes)
   skip_packages = 0,  -- Index of the first socket to use. (0 = unlimited)
   max_packages = 0,  -- Maximum number of sockets to use. (0 = unlimited)
   skip_clusters = 0,  -- Index of the first CCX to use. (0 = unlimited)
@@ -104,13 +103,21 @@ Available options and default values:
 }
 ```
 
-#### cgemma.scheduler.cpu_topology
+> [!NOTE]
+> This method can only be called for configuration before the backend scheduler initialization is triggered. If the backend scheduler is triggered without being configured, it will be initialized with default options.
 
-**syntax:** `<string>desc = sched:cpu_topology()`
+### cgemma.scheduler.cpu\_topology
+
+**syntax:** `<string>desc, <string>err = cgemma.scheduler.cpu_topology()`
 
 Query CPU topology.
 
-#### cgemma.new
+A successful call returns the CPU topology information. Otherwise, it returns `nil` and a string describing the error.
+
+> [!NOTE]
+> Calling this method will trigger the backend scheduler initialization.
+
+### cgemma.new
 
 **syntax:** `<cgemma.instance>inst, <string>err = cgemma.new(<table>options)`
 
@@ -156,22 +163,21 @@ Available options:
                         -- c64 (complex double)
                         -- u128 (uint128)
   seed = 42,  -- Random seed. (default is random setting)
-  scheduler = sched_inst,  -- Instance of scheduler, if not provided a default
-                           -- scheduler will be attached.
   disabled_words = {...},  -- Words you don't want to generate.
 }
 ```
 
 > [!NOTE]
-> If the weights file is not in the new single-file format, then `tokenizer` and `model` options are required.
+> 1. If the weights file is not in the new single-file format, then `tokenizer` and `model` options are required;
+> 2. Calling this method will trigger the backend scheduler initialization.
 
-#### cgemma.instance.disabled_tokens
+### cgemma.instance.disabled\_tokens
 
 **syntax:** `<table>tokens = inst:disabled_tokens()`
 
 Query the disabled tokens of a Gemma instance.
 
-#### cgemma.instance.embed_image
+### cgemma.instance.embed\_image
 
 **syntax:** `<cgemma.image_tokens>img, <string>err = inst:embed_image(<string>data_or_path)`
 
@@ -183,7 +189,7 @@ Create an image with the given width, height, and pixel values, and embed it int
 
 A successful call returns a `cgemma.image_tokens` object containing the image tokens. Otherwise, it returns `nil` and a string describing the error.
 
-#### cgemma.instance.session
+### cgemma.instance.session
 
 **syntax:** `<cgemma.session>sess, <string>err = inst:session([<table>options])`
 
@@ -204,19 +210,19 @@ Available options and default values:
 }
 ```
 
-#### cgemma.session.ready
+### cgemma.session.ready
 
 **syntax:** `<boolean>ok = sess:ready()`
 
 Check if the session is ready to chat.
 
-#### cgemma.session.reset
+### cgemma.session.reset
 
 **syntax:** `sess:reset()`
 
 Reset the session to start a new conversation.
 
-#### cgemma.session.dumps
+### cgemma.session.dumps
 
 **syntax:** `<string>data, <string>err = sess:dumps()`
 
@@ -224,7 +230,7 @@ Dump the current state of the session to a Lua string.
 
 A successful call returns a Lua string that stores state data (binary) of the session. Otherwise, it returns `nil` and a string describing the error.
 
-#### cgemma.session.loads
+### cgemma.session.loads
 
 **syntax:** `<boolean>ok, <string>err = sess:loads(<string>data)`
 
@@ -232,7 +238,7 @@ Load the state data from the given Lua string to restore a previous session.
 
 A successful call returns `true`. Otherwise, it returns `false` and a string describing the error.
 
-#### cgemma.session.dump
+### cgemma.session.dump
 
 **syntax:** `<boolean>ok, <string>err = sess:dump(<string>path)`
 
@@ -240,7 +246,7 @@ Dump the current state of the session to a specific file.
 
 A successful call returns `true`. Otherwise, it returns `false` and a string describing the error.
 
-#### cgemma.session.load
+### cgemma.session.load
 
 **syntax:** `<boolean>ok, <string>err = sess:load(<string>path)`
 
@@ -248,7 +254,7 @@ Load the state data from the given file to restore a previous session.
 
 A successful call returns `true`. Otherwise, it returns `false` and a string describing the error.
 
-#### cgemma.session.stats
+### cgemma.session.stats
 
 **syntax:** `<table>statistics = sess:stats()`
 
@@ -268,7 +274,7 @@ Example of statistics:
 }
 ```
 
-#### metatable(cgemma.session).__call
+### metatable(cgemma.session).__call
 
 **syntax:** `<string or boolean>reply, <string>err = sess([<cgemma.image_tokens>img, ]<string>text[, <function>stream])`
 
@@ -299,7 +305,7 @@ function stream(token, pos, prompt_size)
 end
 ```
 
-#### cgemma.batch
+### cgemma.batch
 
 **syntax:** `<cgemma.batch_result>result, <string>err = cgemma.batch([<cgemma.image_tokens>img, ]<cgemma.session>sess, <string>text[, <function>stream], ...)`
 
@@ -316,7 +322,7 @@ The stream function is the same as in [metatable(cgemma.session).call](#metatabl
 > 4. Inference arguments of batch call: `max_generated_tokens`, `prefill_tbatch`, and `decode_qbatch` will be the minimum value of all sessions, `temperature` will be the average value of all sessions, and `top_k` will be the maximum value of all sessions;
 > 5. The embedded image can only be given as the first argument to a batch call.
 
-#### cgemma.batch_result.stats
+### cgemma.batch\_result.stats
 
 **syntax:** `<table>statistics = result:stats()`
 
@@ -324,7 +330,7 @@ Get statistics for the batch call that returned the current result.
 
 The statistics fields are the same as in [cgemma.session.stats](#cgemmasessionstats).
 
-#### metatable(cgemma.batch_result).call
+### metatable(cgemma.batch\_result).call
 
 **syntax:** `<string or boolean>reply, <string>err = result(<cgemma.session>sess)`
 
@@ -332,7 +338,7 @@ Query the reply corresponding to the session in the result.
 
 A successful call returns the content of the reply (normal mode) or `true` (stream mode). Otherwise, it returns `nil` and a string describing the error.
 
-### Migrating to single-file weights format
+## Migrating to single-file weights format
 
 The weights file now has a new format: a single file that allows the tokenizer and the model type to be contained directly. A tool to migrate from multi-file to single-file is available.
 
