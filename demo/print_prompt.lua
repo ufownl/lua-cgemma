@@ -42,11 +42,11 @@ if args.brief then
     end
     if state == 0 then
       content = content..line.."\n"
-      if line == "### APIs for Lua" then
+      if line == "## APIs for Lua" then
         state = 1
       end
     elseif state == 1 then
-      if line == "### Migrating to single-file weights format" then
+      if line == "## Migrating to single-file weights format" then
         content = content.."\nPlease see [README.md](https://github.com/ufownl/lua-cgemma/blob/stable/README.md) for more details.\n\n"..line.."\n"
         state = 2
       end
