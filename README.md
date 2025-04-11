@@ -81,7 +81,7 @@ Show information of cgemma module.
 
 ### cgemma.scheduler.config
 
-**syntax:** `<boolean>ok, <string>err = cgemma.scheduler.config([<table>options])`
+**syntax:** `<boolean>ok, <string>err = cgemma.scheduler.config(<table>options)`
 
 Configure the backend scheduler.
 

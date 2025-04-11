@@ -12,7 +12,6 @@ int config(lua_State* L) {
     lua_pushstring(L, "Scheduler had been initialized.");
     return 2;
   }
-  auto nargs = lua_gettop(L);
   constexpr const char* available_options[] = {
     "--num_threads", "--pin", "--bind",
     "--skip_packages", "--max_packages",
@@ -22,18 +21,16 @@ int config(lua_State* L) {
   constexpr const int n = sizeof(available_options) / sizeof(available_options[0]);
   int argc = 1;
   char* argv[n * 2 + 1] = {const_cast<char*>("lua-cgemma")};
-  if (nargs > 0) {
-    luaL_checktype(L, 1, LUA_TTABLE);
-    for (auto opt: available_options) {
-      auto k = opt + 2;
-      lua_getfield(L, 1, k);
-      auto v = lua_tostring(L, -1);
-      if (v) {
-        argv[argc++] = const_cast<char*>(opt);
-        argv[argc++] = const_cast<char*>(v);
-      }
-      lua_pop(L, 1);
+  luaL_checktype(L, 1, LUA_TTABLE);
+  for (auto opt: available_options) {
+    auto k = opt + 2;
+    lua_getfield(L, 1, k);
+    auto v = lua_tostring(L, -1);
+    if (v) {
+      argv[argc++] = const_cast<char*>(opt);
+      argv[argc++] = const_cast<char*>(v);
     }
+    lua_pop(L, 1);
   }
   gcpp::ThreadingContext2::SetArgs(gcpp::ThreadingArgs(argc, argv));
   if (gcpp::ThreadingContext2::IsInitialized()) {
