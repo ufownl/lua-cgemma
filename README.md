@@ -34,7 +34,6 @@ sudo make install
 -- Create a Gemma instance
 local gemma, err = require("cgemma").new({
   tokenizer = "/path/to/tokenizer.spm",
-  model = "gemma3-4b",
   weights = "/path/to/4b-it-sfp.sbs"
 })
 if not gemma then
@@ -130,38 +129,8 @@ Available options:
 ```lua
 {
   tokenizer = "/path/to/tokenizer.spm",  -- Path of tokenizer model file.
-  model = "gemma3-4b",  -- Model type:
-                        -- 2b-it (Gemma 2B parameters, instruction-tuned)
-                        -- 2b-pt (Gemma 2B parameters, pretrained)
-                        -- 7b-it (Gemma 7B parameters, instruction-tuned)
-                        -- 7b-pt (Gemma 7B parameters, pretrained)
-                        -- gr2b-it (Griffin 2B parameters, instruction-tuned)
-                        -- gr2b-pt (Griffin 2B parameters, pretrained)
-                        -- gemma2-2b-it (Gemma2 2B parameters, instruction-tuned)
-                        -- gemma2-2b-pt (Gemma2 2B parameters, pretrained)
-                        -- 9b-it (Gemma2 9B parameters, instruction-tuned)
-                        -- 9b-pt (Gemma2 9B parameters, pretrained)
-                        -- 27b-it (Gemma2 27B parameters, instruction-tuned)
-                        -- 27b-pt (Gemma2 27B parameters, pretrained)
-                        -- paligemma-224 (PaliGemma 224*224)
-                        -- paligemma-448 (PaliGemma 448*448)
-                        -- paligemma2-3b-224 (PaliGemma2 3B 224*224)
-                        -- paligemma2-3b-448 (PaliGemma2 3B 448*448)
-                        -- paligemma2-10b-224 (PaliGemma2 10B 224*224)
-                        -- paligemma2-10b-448 (PaliGemma2 10B 448*448)
-                        -- gemma3-4b (Gemma3 4B parameters)
-                        -- gemma3-1b (Gemma3 1B parameters)
-                        -- gemma3-12b (Gemma3 12B parameters)
-                        -- gemma3-27b (Gemma3 27B parameters)
-  weights = "/path/to/4b-it-sfp.sbs",  -- Path of model weights file. (requirednuq)
-  weight_type = "sfp",  -- Weight type:
-                        -- sfp (8-bit FP, default)
-                        -- f32 (float)
-                        -- bf16 (bfloat16)
-                        -- nuq (non-uniform quantization)
-                        -- f64 (double)
-                        -- c64 (complex double)
-                        -- u128 (uint128)
+  weights = "/path/to/4b-it-sfp.sbs",  -- Path of model weights file. (required)
+  map = -1,  -- Enable memory-mapping? (-1 = auto, 0 = no, 1 = yes)
   seed = 42,  -- Random seed. (default is random setting)
   disabled_words = {...},  -- Words you don't want to generate.
 }

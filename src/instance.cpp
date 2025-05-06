@@ -33,21 +33,14 @@ int disabled_tokens(lua_State* L) {
 namespace cgemma {
 
 instance::instance(int argc, char* argv[], unsigned int seed)
-  : args_(argc, argv, false)
+  : args_(argc, argv)
   , rnd_(seed) {
-  if (auto err = args_.Validate()) {
-    throw std::invalid_argument(err);
-  }
-  env_ = std::make_unique<gcpp::MatMulEnv>(gcpp::ThreadingContext2::Get());
-  if (args_.Info().weight == gcpp::Type::kUnknown || args_.Info().model == gcpp::Model::UNKNOWN || args_.tokenizer.path.empty()) {
-    model_ = std::make_unique<gcpp::Gemma>(args_.weights, *env_);
-  } else {
-    model_ = std::make_unique<gcpp::Gemma>(args_.tokenizer, args_.weights, args_.Info(), *env_);
-  }
+  env_ = std::make_unique<gcpp::MatMulEnv>(gcpp::ThreadingContext::Get());
+  model_ = std::make_unique<gcpp::Gemma>(args_, *env_);
 }
 
 bool instance::instruction_tuned() const {
-  switch (model_->Info().wrapping) {
+  switch (model_->GetModelConfig().wrapping) {
     case gcpp::PromptWrapping::GEMMA_IT:
     case gcpp::PromptWrapping::GEMMA_VLM:
       return true;
@@ -88,7 +81,7 @@ int instance::create(lua_State* L) {
   luaL_checktype(L, 1, LUA_TTABLE);
   constexpr const char* required_options[] = {"--weights"};
   constexpr const int n = sizeof(required_options) / sizeof(required_options[0]);
-  constexpr const char* optional_options[] = {"--tokenizer", "--model", "--weight_type"};
+  constexpr const char* optional_options[] = {"--tokenizer", "--map"};
   constexpr const int m = sizeof(optional_options) / sizeof(optional_options[0]);
   char* argv[(n + m) * 2 + 1] = {const_cast<char*>("lua-cgemma")};
   for (int i = 0; i < n; ++i) {

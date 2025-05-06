@@ -55,7 +55,7 @@ private:
 
 int init_arg_state(lua_State* L, int narg, const gcpp::ImageTokens* image, std::vector<cgemma::session_context>& sess_ctxs) {
   auto sess = cgemma::session::check(L, narg);
-  if (sess->inst()->model().Info().wrapping == gcpp::PromptWrapping::PALIGEMMA) {
+  if (sess->inst()->model().GetModelConfig().wrapping == gcpp::PromptWrapping::PALIGEMMA) {
     sess->set_pos(0);
   } else if (sess->pos() >= sess->inst()->max_tokens()) {
     throw std::invalid_argument("Sessions in a batch must not be ended.");

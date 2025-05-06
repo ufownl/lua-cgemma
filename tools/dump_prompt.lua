@@ -18,25 +18,8 @@ if args.help then
   print()
   print("Available options:")
   print("  --tokenizer: Path of tokenizer model file. (default: tokenizer.spm)")
-  print("  --model: Model type (default: gemma3-4b)")
-  print("    2b-it = Gemma 2B parameters, instruction-tuned")
-  print("    2b-pt = Gemma 2B parameters, pretrained")
-  print("    7b-it = Gemma 7B parameters, instruction-tuned")
-  print("    7b-pt = Gemma 7B parameters, pretrained")
-  print("    gr2b-it = Griffin 2B parameters, instruction-tuned")
-  print("    gr2b-pt = Griffin 2B parameters, pretrained")
-  print("    gemma2-2b-it = Gemma2 2B parameters, instruction-tuned")
-  print("    gemma2-2b-pt = Gemma2 2B parameters, pretrained")
-  print("    9b-it = Gemma2 9B parameters, instruction-tuned")
-  print("    9b-pt = Gemma2 9B parameters, pretrained")
-  print("    27b-it = Gemma2 27B parameters, instruction-tuned")
-  print("    27b-pt = Gemma2 27B parameters, pretrained")
-  print("    gemma3-4b = Gemma3 4B parameters")
-  print("    gemma3-1b = Gemma3 1B parameters")
-  print("    gemma3-12b = Gemma3 12B parameters")
-  print("    gemma3-27b = Gemma3 27B parameters")
   print("  --weights: Path of model weights file. (default: 4b-it-sfp.sbs)")
-  print("  --weight_type: Weight type (default: sfp)")
+  print("  --map: Enable memory-mapping? -1 = auto, 0 = no, 1 = yes. (default: -1)")
   print("  --max_generated_tokens: Maximum number of tokens to generate. (default: 2048)")
   print("  --prefill_tbatch: Maximum batch size during prefill phase (default: 256)")
   print("  --temperature: Temperature for top-K. (default: 1.0)")
@@ -77,9 +60,8 @@ print("Loading model ...")
 -- Create a Gemma instance
 local gemma, err = require("cgemma").new({
   tokenizer = args.tokenizer or "tokenizer.spm",
-  model = args.model or "gemma3-4b",
   weights = args.weights or "4b-it-sfp.sbs",
-  weight_type = args.weight_type
+  map = args.map
 })
 if not gemma then
   error("Opoos! "..err)

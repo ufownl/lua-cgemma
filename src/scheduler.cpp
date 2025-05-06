@@ -7,7 +7,7 @@ namespace {
 constexpr const char name[] = "cgemma.scheduler";
 
 int config(lua_State* L) {
-  if (gcpp::ThreadingContext2::IsInitialized()) {
+  if (gcpp::ThreadingContext::IsInitialized()) {
     lua_pushnil(L);
     lua_pushstring(L, "Scheduler had been initialized.");
     return 2;
@@ -32,8 +32,8 @@ int config(lua_State* L) {
     }
     lua_pop(L, 1);
   }
-  gcpp::ThreadingContext2::SetArgs(gcpp::ThreadingArgs(argc, argv));
-  if (gcpp::ThreadingContext2::IsInitialized()) {
+  gcpp::ThreadingContext::SetArgs(gcpp::ThreadingArgs(argc, argv));
+  if (gcpp::ThreadingContext::IsInitialized()) {
     lua_pushnil(L);
     lua_pushstring(L, "Scheduler had been initialized.");
     return 2;
@@ -44,7 +44,7 @@ int config(lua_State* L) {
 
 int cpu_topology(lua_State* L) {
   try {
-    lua_pushstring(L, gcpp::ThreadingContext2::Get().topology.TopologyString());
+    lua_pushstring(L, gcpp::ThreadingContext::Get().topology.TopologyString());
     return 1;
   } catch (const std::exception& e) {
     lua_pushnil(L);

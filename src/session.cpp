@@ -33,7 +33,7 @@ void generate(cgemma::session* sess, const gcpp::ImageTokens* image, const std::
 }
 
 int stream_mode(lua_State* L, cgemma::session* sess, const gcpp::ImageTokens* image, const std::vector<int>& prompt, int stream_fn) {
-  if (sess->inst()->model().Info().wrapping == gcpp::PromptWrapping::PALIGEMMA) {
+  if (sess->inst()->model().GetModelConfig().wrapping == gcpp::PromptWrapping::PALIGEMMA) {
     sess->set_pos(0);
   }
   auto start_pos = sess->pos();
@@ -72,7 +72,7 @@ int stream_mode(lua_State* L, cgemma::session* sess, const gcpp::ImageTokens* im
 }
 
 int normal_mode(lua_State* L, cgemma::session* sess, const gcpp::ImageTokens* image, const std::vector<int>& prompt) {
-  if (sess->inst()->model().Info().wrapping == gcpp::PromptWrapping::PALIGEMMA) {
+  if (sess->inst()->model().GetModelConfig().wrapping == gcpp::PromptWrapping::PALIGEMMA) {
     sess->set_pos(0);
   }
   auto start_pos = sess->pos();
@@ -166,7 +166,7 @@ private:
 };
 
 size_t dump_impl(char* buf, const cgemma::session* sess) {
-  auto type = sess->inst()->model().Info().model;
+  auto type = sess->inst()->model().GetModelConfig().model;
   uint16_t pos = sess->pos();
   kv_cache_size_store size(sess->inst()->model().GetModelConfig(), std::min(sess->pos(), sess->kv_cache().seq_len));
   if (buf) {
@@ -200,7 +200,7 @@ void load_impl(cgemma::session* sess, const char* buf, size_t n) {
     }
   }
   auto type = static_cast<gcpp::Model>(buf[sizeof(name) - 1]);
-  if (type != sess->inst()->model().Info().model) {
+  if (type != sess->inst()->model().GetModelConfig().model) {
     throw std::invalid_argument("Invalid dump format: model type mismatch");
   }
   buf += sizeof(name);
@@ -296,9 +296,6 @@ session::session(instance* inst, int argc, char* argv[], bool no_wrapping)
   : inst_(inst)
   , args_(argc, argv)
   , no_wrapping_(no_wrapping) {
-  if (auto err = args_.Validate()) {
-    throw std::invalid_argument(err);
-  }
   kv_cache_ = gcpp::KVCache::Create(inst->model().GetModelConfig(), args_.prefill_tbatch_size);
 }
 
@@ -316,7 +313,7 @@ std::vector<int> session::tokenize(const char* text, size_t len) const {
 
 std::vector<int> session::tokenize(const gcpp::ImageTokens& image, const char* text, size_t len) const {
   auto text_part = tokenize_text(std::string(text, len));
-  switch (inst_->model().Info().wrapping) {
+  switch (inst_->model().GetModelConfig().wrapping) {
     case gcpp::PromptWrapping::PALIGEMMA:
       return inst_->model().ChatTemplate().WrapPali(text_part, image.BatchSize());
     case gcpp::PromptWrapping::GEMMA_VLM: {
