@@ -6,7 +6,6 @@ function config()
     },
     gemma = {
       tokenizer = "tokenizer.spm",
-      model = "gemma3-12b",
       weights = "12b-it-sfp.sbs"
     },
     session = {

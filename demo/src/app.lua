@@ -1,5 +1,5 @@
 local ok, err = require("cgemma").scheduler.config(config().scheduler)
-if not sched then
+if not ok then
   ngx.log(ngx.ERR, "cgemma error: ", err)
 end
 
@@ -37,7 +37,7 @@ function gemma_loop()
   }))
   if not bytes then
     ngx.log(ngx.ERR, "websocket error: ", err)
-    return ngx.OK
+    return ngx.ERROR
   end
   while session:ready() do
     local data, tp, err = ws:recv_frame()
@@ -47,7 +47,7 @@ function gemma_loop()
       if ct ~= "continuation" then
         ngx.log(ngx.ERR, "websocket error: ", err)
         ws:send_close()
-        return ngx.OK
+        return ngx.ERROR
       end
       data = data..frag
     end
@@ -56,7 +56,7 @@ function gemma_loop()
       if not msg or not msg.role then
         ngx.log(ngx.ERR, "protocol error: unknown format")
         ws:send_close()
-        return ngx.OK
+        return ngx.ERROR
       end
       if msg.role == "user" then
         local embedded_image
@@ -72,7 +72,7 @@ function gemma_loop()
               }))
               if not bytes then
                 ngx.log(ngx.ERR, "websocket error: ", err)
-                return ngx.OK
+                return ngx.ERROR
               end
               img = img:resize(config().vlm_mode.resize_to / img:width(), {vscale = config().vlm_mode.resize_to / img:height(), kernel = "linear"})
               local ppm = require("vips").Target.new_to_memory()
@@ -81,7 +81,7 @@ function gemma_loop()
               if not img_tks then
                 ngx.log(ngx.ERR, "cgemma error: ", err)
                 ws:send_close()
-                return ngx.OK
+                return ngx.ERROR
               end
               embedded_image = img_tks
             end
@@ -95,7 +95,7 @@ function gemma_loop()
           }))
           if not bytes then
             ngx.log(ngx.ERR, "websocket error: ", err)
-            return ngx.OK
+            return ngx.ERROR
           end
           local function stream_fn(token, pos, prompt_size)
             local bytes, err = ws:send_text(require("cjson.safe").encode({
@@ -119,7 +119,7 @@ function gemma_loop()
           if not ok then
             ngx.log(ngx.ERR, "cgemma error: ", err)
             ws:send_close()
-            return ngx.OK
+            return ngx.ERROR
           end
         end
       else
@@ -129,22 +129,23 @@ function gemma_loop()
         }))
         if not bytes then
           ngx.log(ngx.ERR, "websocket error: ", err)
-          return ngx.OK
+          return ngx.ERROR
         end
       end
     elseif tp == "ping" then
       local bytes, err = wb:send_pong()
       if not bytes then
         ngx.log(ngx.ERR, "websocket error: ", err)
-        return ngx.OK
+        return ngx.ERROR
       end
     elseif tp == "close" then
       return ngx.OK
     elseif tp ~= "pong" then
+      ws:send_close()
       if err then
         ngx.log(ngx.ERR, "websocket error: ", err)
+        return ngx.ERROR
       end
-      ws:send_close()
       return ngx.OK
     end
   end
