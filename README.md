@@ -90,15 +90,15 @@ Available options and default values:
 
 ```lua
 {
-  num_threads = 0,  -- Maximum number of threads to use. (0 = unlimited)
-  pin = -1,  -- Pin threads? (-1 = auto, 0 = no, 1 = yes)
-  bind = -1,  -- Bind memory to sockets? (-1 = auto, 0 = no, 1 = yes)
-  skip_packages = 0,  -- Index of the first socket to use. (0 = unlimited)
-  max_packages = 0,  -- Maximum number of sockets to use. (0 = unlimited)
-  skip_clusters = 0,  -- Index of the first CCX to use. (0 = unlimited)
-  max_clusters = 0,  -- Maximum number of CCXs to use. (0 = unlimited)
-  skip_lps = 0,  -- Index of the first LP to use. (0 = unlimited)
-  max_lps = 0,  -- Maximum number of LPs to use. (0 = unlimited)
+  num_threads = 0,  -- Maximum number of threads to use. (0 means no limit)
+  pin = -1,  -- Pin threads? (-1 means auto, 0 means no, 1 means yes)
+  bind = -1,  -- Bind memory to sockets? (-1 means auto, 0 means no, 1 means yes)
+  skip_packages = 0,  -- Index of the first socket to use. (0 means no limit)
+  max_packages = 0,  -- Maximum number of sockets to use. (0 means no limit)
+  skip_clusters = 0,  -- Index of the first CCX to use. (0 means no limit)
+  max_clusters = 0,  -- Maximum number of CCXs to use. (0 means no limit)
+  skip_lps = 0,  -- Index of the first LP to use. (0 means no limit)
+  max_lps = 0,  -- Maximum number of LPs to use. (0 means no limit)
 }
 ```
 
@@ -130,7 +130,7 @@ Available options:
 {
   tokenizer = "/path/to/tokenizer.spm",  -- Path of tokenizer model file.
   weights = "/path/to/4b-it-sfp.sbs",  -- Path of model weights file. (required)
-  map = -1,  -- Enable memory-mapping? (-1 = auto, 0 = no, 1 = yes)
+  map = -1,  -- Enable memory-mapping? (-1 means auto, 0 means no, 1 means yes)
   seed = 42,  -- Random seed. (default is random setting)
   disabled_words = {...},  -- Words you don't want to generate.
 }
