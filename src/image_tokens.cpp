@@ -7,7 +7,7 @@ namespace {
 constexpr const char name[] = "cgemma.image_tokens";
 
 int destroy(lua_State* L) {
-  cgemma::image_tokens::check(L, 1)->~RowVectorBatch();
+  cgemma::image_tokens::check(L, 1)->~MatStorageT();
   return 0;
 }
 
@@ -71,7 +71,11 @@ int create(lua_State* L) {
     }
     auto model_cfg = inst->model().GetModelConfig();
     img.Resize(model_cfg.vit_config.image_size, model_cfg.vit_config.image_size);
-    gcpp::ImageTokens tks(inst->model().Env().ctx.allocator, gcpp::Extents2D(model_cfg.vit_config.seq_len / (model_cfg.vit_config.pool_dim * model_cfg.vit_config.pool_dim), model_cfg.model_dim));
+    gcpp::ImageTokens tks(
+      "image_tokens",
+      gcpp::Extents2D(model_cfg.vit_config.seq_len / (model_cfg.vit_config.pool_dim * model_cfg.vit_config.pool_dim), model_cfg.model_dim),
+      gcpp::MatPadding::kOdd
+    );
     gcpp::RuntimeConfig cfg;
     cfg.gen = &inst->rnd();
     cfg.verbosity = 0;

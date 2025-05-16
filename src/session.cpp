@@ -141,53 +141,74 @@ enum class kv_cache_field: size_t {
   end
 };
 
-class kv_cache_size_store {
+template <class T>
+class kv_cache_blob {
 public:
-  kv_cache_size_store(const gcpp::ModelConfig& cfg, size_t pos) {
-    store_[static_cast<size_t>(kv_cache_field::kv_cache)] = cfg.CachePosSize() * pos * sizeof(std::declval<gcpp::KVCache>().kv_cache[0]);
-    auto griffin_layers = cfg.NumLayersOfType(gcpp::LayerAttentionType::kGriffinRecurrentBlock);
-    decltype(std::declval<gcpp::LayerConfig>().conv1d_width) conv1d_width = 0;
-    for (const auto& layer_cfg: cfg.layer_configs) {
-      conv1d_width = std::max(conv1d_width, layer_cfg.conv1d_width);
+  template <class U>
+  kv_cache_blob(U sess, size_t resumed_pos = 0) {
+    auto pos_size = sess->inst()->model().GetModelConfig().CachePosSize();
+    if (pos_size > 0) {
+      auto pos = std::min(resumed_pos ? resumed_pos : sess->pos(), sess->kv_cache().seq_len);
+      ptrs_[static_cast<size_t>(kv_cache_field::kv_cache)] = sess->kv_cache().kv_cache.get();
+      sizes_[static_cast<size_t>(kv_cache_field::kv_cache)] = pos_size * pos * sizeof(std::declval<gcpp::KVCache>().kv_cache[0]);
+    } else {
+      ptrs_[static_cast<size_t>(kv_cache_field::kv_cache)] = nullptr;
+      sizes_[static_cast<size_t>(kv_cache_field::kv_cache)] = 0;
     }
-    store_[static_cast<size_t>(kv_cache_field::conv1d_cache)] = griffin_layers * (conv1d_width == 0 ? 0 : conv1d_width - 1) * cfg.model_dim * sizeof(std::declval<gcpp::KVCache>().conv1d_cache[0]);
-    store_[static_cast<size_t>(kv_cache_field::rglru_cache)] = griffin_layers * cfg.model_dim * sizeof(std::declval<gcpp::KVCache>().rglru_cache[0]);
+#define GRIFFIN_CACHE(FIELD)                                                                \
+  do {                                                                                      \
+    if (sess->kv_cache().griffin_layers) {                                                  \
+      auto span = sess->kv_cache().FIELD.Span();                                            \
+      ptrs_[static_cast<size_t>(kv_cache_field::FIELD)] = span.ptr;                         \
+      sizes_[static_cast<size_t>(kv_cache_field::FIELD)] = span.num * sizeof(span.ptr[0]);  \
+    } else {                                                                                \
+      ptrs_[static_cast<size_t>(kv_cache_field::FIELD)] = nullptr;                          \
+      sizes_[static_cast<size_t>(kv_cache_field::FIELD)] = 0;                               \
+    }                                                                                       \
+  } while (false)
+    GRIFFIN_CACHE(conv1d_cache);
+    GRIFFIN_CACHE(rglru_cache);
+#undef GRIFFIN_CACHE
   }
 
   template <kv_cache_field Field>
-  size_t get() const { return store_[static_cast<size_t>(Field)]; }
+  T buffer() const { return ptrs_[static_cast<size_t>(Field)]; }
 
-  size_t total() const {
-    return std::accumulate(store_.begin() + 1, store_.end(), store_.front());
+  template <kv_cache_field Field>
+  size_t size() const { return sizes_[static_cast<size_t>(Field)]; }
+
+  size_t total_size() const {
+    return std::accumulate(sizes_.begin() + 1, sizes_.end(), sizes_.front());
   }
 
 private:
-  std::array<size_t, static_cast<size_t>(kv_cache_field::end)> store_;
+  std::array<T, static_cast<size_t>(kv_cache_field::end)> ptrs_;
+  std::array<size_t, static_cast<size_t>(kv_cache_field::end)> sizes_;
 };
 
 size_t dump_impl(char* buf, const cgemma::session* sess) {
   auto type = sess->inst()->model().GetModelConfig().model;
   uint16_t pos = sess->pos();
-  kv_cache_size_store size(sess->inst()->model().GetModelConfig(), std::min(sess->pos(), sess->kv_cache().seq_len));
+  kv_cache_blob<const void*> blob(sess);
   if (buf) {
     std::memcpy(buf, name, sizeof(name) - 1);
     buf[sizeof(name) - 1] = static_cast<char>(type);
     buf += sizeof(name);
     std::memcpy(buf, &pos, sizeof(pos));
     buf += sizeof(pos);
-#define DUMP_CACHE(FIELD)                                                                 \
-  do {                                                                                    \
-    if (size.get<kv_cache_field::FIELD>() > 0) {                                          \
-      std::memcpy(buf, sess->kv_cache().FIELD.get(), size.get<kv_cache_field::FIELD>());  \
-      buf += size.get<kv_cache_field::FIELD>();                                           \
-    }                                                                                     \
+#define DUMP_CACHE(FIELD)                                                                         \
+  do {                                                                                            \
+    if (blob.buffer<kv_cache_field::FIELD>()) {                                                   \
+      std::memcpy(buf, blob.buffer<kv_cache_field::FIELD>(), blob.size<kv_cache_field::FIELD>()); \
+      buf += blob.size<kv_cache_field::FIELD>();                                                  \
+    }                                                                                             \
   } while (false)
     DUMP_CACHE(kv_cache);
     DUMP_CACHE(conv1d_cache);
     DUMP_CACHE(rglru_cache);
 #undef DUMP_CACHE
   }
-  return sizeof(name) + sizeof(pos) + size.total();
+  return sizeof(name) + sizeof(pos) + blob.total_size();
 }
 
 void load_impl(cgemma::session* sess, const char* buf, size_t n) {
@@ -206,17 +227,17 @@ void load_impl(cgemma::session* sess, const char* buf, size_t n) {
   buf += sizeof(name);
   size_t pos = *reinterpret_cast<const uint16_t*>(buf);
   buf += sizeof(uint16_t);
-  kv_cache_size_store size(sess->inst()->model().GetModelConfig(), std::min(pos, sess->kv_cache().seq_len));
-  if (n != sizeof(name) + sizeof(uint16_t) + size.total()) {
+  kv_cache_blob<void*> blob(sess, pos);
+  if (n != sizeof(name) + sizeof(uint16_t) + blob.total_size()) {
     throw std::invalid_argument("Invalid dump format: KVCache length mismatch");
   }
   sess->set_pos(pos);
-#define LOAD_CACHE(FIELD)                                                                 \
-  do {                                                                                    \
-    if (size.get<kv_cache_field::FIELD>() > 0) {                                          \
-      std::memcpy(sess->kv_cache().FIELD.get(), buf, size.get<kv_cache_field::FIELD>());  \
-      buf += size.get<kv_cache_field::FIELD>();                                           \
-    }                                                                                     \
+#define LOAD_CACHE(FIELD)                                                                         \
+  do {                                                                                            \
+    if (blob.buffer<kv_cache_field::FIELD>()) {                                                   \
+      std::memcpy(blob.buffer<kv_cache_field::FIELD>(), buf, blob.size<kv_cache_field::FIELD>()); \
+      buf += blob.size<kv_cache_field::FIELD>();                                                  \
+    }                                                                                             \
   } while (false)
   LOAD_CACHE(kv_cache);
   LOAD_CACHE(conv1d_cache);
@@ -295,8 +316,9 @@ namespace cgemma {
 session::session(instance* inst, int argc, char* argv[], bool no_wrapping)
   : inst_(inst)
   , args_(argc, argv)
-  , no_wrapping_(no_wrapping) {
-  kv_cache_ = gcpp::KVCache::Create(inst->model().GetModelConfig(), args_.prefill_tbatch_size);
+  , no_wrapping_(no_wrapping)
+  , kv_cache_(inst->model().GetModelConfig(), args_.prefill_tbatch_size) {
+  // nop
 }
 
 std::vector<int> session::tokenize(const char* text, size_t len) const {
@@ -315,9 +337,9 @@ std::vector<int> session::tokenize(const gcpp::ImageTokens& image, const char* t
   auto text_part = tokenize_text(std::string(text, len));
   switch (inst_->model().GetModelConfig().wrapping) {
     case gcpp::PromptWrapping::PALIGEMMA:
-      return inst_->model().ChatTemplate().WrapPali(text_part, image.BatchSize());
+      return inst_->model().ChatTemplate().WrapPali(text_part, image.Rows());
     case gcpp::PromptWrapping::GEMMA_VLM: {
-      auto prompt = inst_->model().ChatTemplate().WrapVLM(text_part, image.BatchSize());
+      auto prompt = inst_->model().ChatTemplate().WrapVLM(text_part, image.Rows());
       return no_wrapping_ ? prompt : inst_->model().ChatTemplate().Apply(pos_, prompt);
     }
     default:
