@@ -83,7 +83,9 @@ std::tuple<const gcpp::ImageTokens*, std::vector<cgemma::session_context>> parse
       auto& ctx = sess_ctxs.back();
       if (image) {
         ctx.prompt = ctx.sess->tokenize(*image, text, len);
-        ctx.prefix_end = ctx.prompt.size();
+        if (ctx.sess->inst()->model().GetModelConfig().wrapping == gcpp::PromptWrapping::PALIGEMMA) {
+          ctx.prefix_end = ctx.prompt.size();
+        }
       } else {
         ctx.prompt = ctx.sess->tokenize(text, len);
       }
@@ -185,9 +187,7 @@ namespace cgemma {
 
 int batch(lua_State* L) {
   try {
-    const gcpp::ImageTokens* image;
-    std::vector<cgemma::session_context> sess_ctxs;
-    std::tie(image, sess_ctxs) = parse_args(L);
+    auto[image, sess_ctxs] = parse_args(L);
     auto cfg = parse_config(sess_ctxs);
     cfg.verbosity = 0;
     auto inst = sess_ctxs.front().sess->inst();
@@ -238,9 +238,12 @@ int batch(lua_State* L) {
       };
     }
     if (image) {
-      cfg.prefill_tbatch_size = 0;
-      for (const auto& ctx: sess_ctxs) {
-        cfg.prefill_tbatch_size = std::max(cfg.prefill_tbatch_size, ctx.prefix_end);
+      if (inst->model().GetModelConfig().wrapping == gcpp::PromptWrapping::PALIGEMMA) {
+        size_t prefix_end = 0;
+        for (const auto& ctx: sess_ctxs) {
+          prefix_end = std::max(prefix_end, ctx.prefix_end);
+        }
+        cfg.prefill_tbatch_size = std::max(cfg.prefill_tbatch_size, prefix_end);
       }
       cfg.image_tokens = image;
     }
