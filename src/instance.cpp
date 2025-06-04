@@ -36,7 +36,11 @@ instance::instance(int argc, char* argv[], unsigned int seed)
   : args_(argc, argv)
   , rnd_(seed) {
   env_ = std::make_unique<gcpp::MatMulEnv>(gcpp::ThreadingContext::Get());
-  model_ = std::make_unique<gcpp::Gemma>(args_, *env_);
+  // Disable heuristics loading weights into BF16
+  gcpp::InferenceArgs infa;
+  infa.prefill_tbatch_size = 0;
+  infa.decode_qbatch_size = 0;
+  model_ = std::make_unique<gcpp::Gemma>(args_, infa, *env_);
 }
 
 bool instance::instruction_tuned() const {
@@ -81,7 +85,7 @@ int instance::create(lua_State* L) {
   luaL_checktype(L, 1, LUA_TTABLE);
   constexpr const char* required_options[] = {"--weights"};
   constexpr const int n = sizeof(required_options) / sizeof(required_options[0]);
-  constexpr const char* optional_options[] = {"--tokenizer", "--map"};
+  constexpr const char* optional_options[] = {"--tokenizer", "--map", "--to_bf16"};
   constexpr const int m = sizeof(optional_options) / sizeof(optional_options[0]);
   char* argv[(n + m) * 2 + 1] = {const_cast<char*>("lua-cgemma")};
   for (int i = 0; i < n; ++i) {

@@ -131,6 +131,7 @@ Available options:
   tokenizer = "/path/to/tokenizer.spm",  -- Path of tokenizer model file.
   weights = "/path/to/4b-it-sfp.sbs",  -- Path of model weights file. (required)
   map = -1,  -- Enable memory-mapping? (-1 means auto, 0 means no, 1 means yes)
+  to_bf16 = -1,  -- Convert weights to bf16? (-1 means auto, 0 means no, 1 means yes)
   seed = 42,  -- Random seed. (default is random setting)
   disabled_words = {...},  -- Words you don't want to generate.
 }
