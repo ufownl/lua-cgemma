@@ -5,6 +5,10 @@ if args.help then
     "resty normal_mode.lua [options]"
   )
   print("  --image: Path of image file (PPM format: P6, binary).")
+  print("  --seq_len: Sequence length, capped by max context window of model. (default: 4096)")
+  print("  --max_generated_tokens: Maximum number of tokens to generate. (default: 2048)")
+  print("  --temperature: Temperature for top-K. (default: 1.0)")
+  print("  --top_k: Number of top-K tokens to sample from. (default: 5)")
   print("  --kv_cache: Path of KV cache file.")
   print("  --stats: Print statistics at end of turn.")
   return
@@ -29,7 +33,12 @@ if args.image then
 end
 
 -- Create a chat session
-local session, err = gemma:session({top_k = 5})
+local session, err = gemma:session({
+  seq_len = tonumber(args.seq_len) or 4096,
+  max_generated_tokens = tonumber(args.max_generated_tokens),
+  temperature = tonumber(args.temperature),
+  top_k = tonumber(args.top_k) or 5
+})
 if not session then
   error("Opoos! "..err)
 end

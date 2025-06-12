@@ -20,6 +20,7 @@ if args.help then
   print("  --tokenizer: Path of tokenizer model file. (default: tokenizer.spm)")
   print("  --weights: Path of model weights file. (default: 4b-it-sfp.sbs)")
   print("  --map: Enable memory-mapping? -1 = auto, 0 = no, 1 = yes. (default: -1)")
+  print("  --seq_len: Sequence length, capped by max context window of model. (default: 4096)")
   print("  --max_generated_tokens: Maximum number of tokens to generate. (default: 2048)")
   print("  --prefill_tbatch: Maximum batch size during prefill phase (default: 256)")
   print("  --temperature: Temperature for top-K. (default: 1.0)")
@@ -43,14 +44,14 @@ end
 
 -- Config global scheduler
 local ok, err = require("cgemma").scheduler.config({
-  num_threads = args.num_threads,
-  pin = args.pin,
-  skip_packages = args.skip_packages,
-  max_packages = args.max_packages,
-  skip_clusters = args.skip_clusters,
-  max_clusters = args.max_clusters,
-  skip_lps = args.skip_lps,
-  max_lps = args.max_lps
+  num_threads = tonumber(args.num_threads),
+  pin = tonumber(args.pin),
+  skip_packages = tonumber(args.skip_packages),
+  max_packages = tonumber(args.max_packages),
+  skip_clusters = tonumber(args.skip_clusters),
+  max_clusters = tonumber(args.max_clusters),
+  skip_lps = tonumber(args.skip_lps),
+  max_lps = tonumber(args.max_lps)
 })
 if not ok then
   error("Opoos! "..err)
@@ -78,10 +79,11 @@ end
 
 -- Create a session
 local session, err = gemma:session({
-  max_generated_tokens = args.max_generated_tokens,
-  prefill_tbatch = args.prefill_tbatch,
-  temperature = args.temperature,
-  top_k = args.top_k,
+  seq_len = tonumber(args.seq_len) or 4096,
+  max_generated_tokens = tonumber(args.max_generated_tokens),
+  prefill_tbatch = tonumber(args.prefill_tbatch),
+  temperature = tonumber(args.temperature),
+  top_k = tonumber(args.top_k),
   no_wrapping = true
 })
 if not session then

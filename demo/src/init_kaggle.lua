@@ -6,6 +6,7 @@ function config()
       weights = "4b-it-sfp.sbs"
     },
     session = {
+      seq_len = 8192,
       prefill_tbatch = 64,
       temperature = 0.4,
       top_k = 5

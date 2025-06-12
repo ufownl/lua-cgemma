@@ -383,6 +383,7 @@ int session::create(lua_State* L) {
   auto nargs = lua_gettop(L);
   auto inst = instance::check(L, 1);
   constexpr const char* available_options[] = {
+    "--seq_len",
     "--max_generated_tokens",
     "--prefill_tbatch",
     "--decode_qbatch",

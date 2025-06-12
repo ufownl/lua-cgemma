@@ -171,6 +171,7 @@ Available options and default values:
 
 ```lua
 {
+  seq_len = 2048,  -- Sequence length, capped by max context window of model.
   max_generated_tokens = 2048,  -- Maximum number of tokens to generate.
   prefill_tbatch = 256,  -- Prefill: max tokens per batch.
   decode_qbatch = 16,  -- Decode: max queries per batch.
