@@ -4,7 +4,6 @@
 #include "utils/file_io.hpp"
 #include <stdexcept>
 #include <algorithm>
-#include <utility>
 #include <numeric>
 #include <array>
 
@@ -150,25 +149,25 @@ class kv_cache_blob {
 public:
   template <class U>
   kv_cache_blob(U sess, size_t resumed_pos = 0) {
-    auto pos_size = sess->inst()->model().GetModelConfig().CachePosSize();
-    if (pos_size > 0) {
-      auto pos = std::min(resumed_pos ? resumed_pos : sess->pos(), sess->kv_cache().seq_len);
-      ptrs_[static_cast<size_t>(kv_cache_field::kv_cache)] = sess->kv_cache().kv_cache.get();
-      sizes_[static_cast<size_t>(kv_cache_field::kv_cache)] = pos_size * pos * sizeof(std::declval<gcpp::KVCache>().kv_cache[0]);
+    if (sess->inst()->model().GetModelConfig().KVCacheCols() > 0) {
+      auto& kv_cache = sess->kv_cache().kv_cache;
+      auto pos = std::min(resumed_pos ? resumed_pos : sess->pos(), kv_cache.Rows());
+      ptrs_[static_cast<size_t>(kv_cache_field::kv_cache)] = kv_cache.RowBytes(0);
+      sizes_[static_cast<size_t>(kv_cache_field::kv_cache)] = pos * kv_cache.Stride() * kv_cache.ElementBytes();
     } else {
       ptrs_[static_cast<size_t>(kv_cache_field::kv_cache)] = nullptr;
       sizes_[static_cast<size_t>(kv_cache_field::kv_cache)] = 0;
     }
-#define GRIFFIN_CACHE(FIELD)                                                                \
-  do {                                                                                      \
-    if (sess->kv_cache().griffin_layers) {                                                  \
-      auto span = sess->kv_cache().FIELD.Span();                                            \
-      ptrs_[static_cast<size_t>(kv_cache_field::FIELD)] = span.ptr;                         \
-      sizes_[static_cast<size_t>(kv_cache_field::FIELD)] = span.num * sizeof(span.ptr[0]);  \
-    } else {                                                                                \
-      ptrs_[static_cast<size_t>(kv_cache_field::FIELD)] = nullptr;                          \
-      sizes_[static_cast<size_t>(kv_cache_field::FIELD)] = 0;                               \
-    }                                                                                       \
+#define GRIFFIN_CACHE(FIELD)                                                                                      \
+  do {                                                                                                            \
+    auto& field = sess->kv_cache().FIELD;                                                                         \
+    if (field.Rows() > 0) {                                                                                       \
+      ptrs_[static_cast<size_t>(kv_cache_field::FIELD)] = field.RowBytes(0);                                      \
+      sizes_[static_cast<size_t>(kv_cache_field::FIELD)] = field.Rows() * field.Stride() * field.ElementBytes();  \
+    } else {                                                                                                      \
+      ptrs_[static_cast<size_t>(kv_cache_field::FIELD)] = nullptr;                                                \
+      sizes_[static_cast<size_t>(kv_cache_field::FIELD)] = 0;                                                     \
+    }                                                                                                             \
   } while (false)
     GRIFFIN_CACHE(conv1d_cache);
     GRIFFIN_CACHE(rglru_cache);
@@ -321,7 +320,7 @@ session::session(instance* inst, int argc, char* argv[], bool no_wrapping)
   : inst_(inst)
   , args_(argc, argv)
   , no_wrapping_(no_wrapping)
-  , kv_cache_(inst->model().GetModelConfig(), args_.prefill_tbatch_size) {
+  , kv_cache_(inst->model().GetModelConfig(), args_) {
   // nop
 }
 
