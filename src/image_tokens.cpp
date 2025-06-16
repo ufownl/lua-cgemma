@@ -79,7 +79,7 @@ int create(lua_State* L) {
     gcpp::RuntimeConfig cfg;
     cfg.gen = &inst->rnd();
     cfg.verbosity = 0;
-    inst->model().GenerateImageTokens(cfg, img, tks);
+    inst->model().GenerateImageTokens(cfg, tks.Rows(), img, tks);
     auto ud = lua_newuserdata(L, sizeof(gcpp::ImageTokens));
     new(ud) gcpp::ImageTokens(std::move(tks));
     luaL_getmetatable(L, name);
