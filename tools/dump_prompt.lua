@@ -20,7 +20,7 @@ if args.help then
   print("  --tokenizer: Path of tokenizer model file. (default: tokenizer.spm)")
   print("  --weights: Path of model weights file. (default: 4b-it-sfp.sbs)")
   print("  --map: Enable memory-mapping? -1 = auto, 0 = no, 1 = yes. (default: -1)")
-  print("  --seq_len: Sequence length, capped by max context window of model. (default: 4096)")
+  print("  --seq_len: Sequence length, capped by max context window of model. (default: 8192)")
   print("  --max_generated_tokens: Maximum number of tokens to generate. (default: 2048)")
   print("  --prefill_tbatch: Maximum batch size during prefill phase (default: 256)")
   print("  --temperature: Temperature for top-K. (default: 1.0)")
@@ -79,7 +79,7 @@ end
 
 -- Create a session
 local session, err = gemma:session({
-  seq_len = tonumber(args.seq_len) or 4096,
+  seq_len = tonumber(args.seq_len),
   max_generated_tokens = tonumber(args.max_generated_tokens),
   prefill_tbatch = tonumber(args.prefill_tbatch),
   temperature = tonumber(args.temperature),
