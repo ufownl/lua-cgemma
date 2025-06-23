@@ -21,6 +21,7 @@ public:
 
   const gcpp::LoaderArgs& args() const { return args_; }
   std::mt19937& rnd() { return rnd_; }
+  gcpp::MatMulEnv& env() const { return *env_; }
   gcpp::Gemma& model() const { return *model_; }
   const std::unordered_set<int>& disabled_tokens() const { return disabled_tokens_; }
   size_t max_tokens() const { return model_->GetModelConfig().max_seq_len; }

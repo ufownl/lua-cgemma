@@ -29,9 +29,9 @@ void generate(cgemma::session* sess, const gcpp::ImageTokens* image, const std::
       prefix_end = prompt.size();
     }
     cfg.image_tokens = image;
-    sess->inst()->model().Generate(cfg, gcpp::PromptTokens(prompt.data(), prompt.size()), sess->pos(), prefix_end, sess->kv_cache(), sess->timing_info());
+    sess->inst()->model().Generate(cfg, gcpp::PromptTokens(prompt.data(), prompt.size()), sess->pos(), prefix_end, sess->kv_cache(), sess->inst()->env(), sess->timing_info());
   } else {
-    sess->inst()->model().Generate(cfg, gcpp::PromptTokens(prompt.data(), prompt.size()), sess->pos(), sess->kv_cache(), sess->timing_info());
+    sess->inst()->model().Generate(cfg, gcpp::PromptTokens(prompt.data(), prompt.size()), sess->pos(), sess->kv_cache(), sess->inst()->env(), sess->timing_info());
   }
 }
 

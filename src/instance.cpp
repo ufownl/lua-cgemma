@@ -40,7 +40,7 @@ instance::instance(int argc, char* argv[], unsigned int seed)
   gcpp::InferenceArgs infa;
   infa.prefill_tbatch_size = 0;
   infa.decode_qbatch_size = 0;
-  model_ = std::make_unique<gcpp::Gemma>(args_, infa, *env_);
+  model_ = std::make_unique<gcpp::Gemma>(args_, infa, env_->ctx.pools);
 }
 
 bool instance::instruction_tuned() const {
