@@ -328,12 +328,11 @@ std::vector<int> session::tokenize(const char* text, size_t len) const {
   auto prompt = tokenize_text(std::string(text, len));
   if (!no_wrapping_ && inst_->instruction_tuned()) {
     return inst_->model().ChatTemplate().Apply(pos_, prompt);
-  } else {
-    if (pos_ == 0) {
-      prompt.insert(prompt.cbegin(), gcpp::BOS_ID);
-    }
-    return prompt;
   }
+  if (pos_ == 0) {
+    prompt.insert(prompt.cbegin(), gcpp::BOS_ID);
+  }
+  return prompt;
 }
 
 std::vector<int> session::tokenize(const gcpp::ImageTokens& image, const char* text, size_t len) const {
@@ -341,10 +340,15 @@ std::vector<int> session::tokenize(const gcpp::ImageTokens& image, const char* t
   switch (inst_->model().GetModelConfig().wrapping) {
     case gcpp::PromptWrapping::PALIGEMMA:
       return inst_->model().ChatTemplate().WrapPali(text_part, image.Rows());
-    case gcpp::PromptWrapping::GEMMA_VLM: {
-      auto prompt = inst_->model().ChatTemplate().WrapVLM(text_part, image.Rows());
-      return no_wrapping_ ? prompt : inst_->model().ChatTemplate().Apply(pos_, prompt);
-    }
+    case gcpp::PromptWrapping::GEMMA_VLM:
+      if (!no_wrapping_) {
+        auto prompt = inst_->model().ChatTemplate().WrapVLM(text_part, image.Rows());
+        return inst_->model().ChatTemplate().Apply(pos_, prompt);
+      }
+      if (pos_ == 0) {
+        text_part.insert(text_part.cbegin(), gcpp::BOS_ID);
+      }
+      return inst_->model().ChatTemplate().WrapVLM(text_part, image.Rows());
     default:
       throw std::invalid_argument("Current variant does not support vision prompt.");
   }
