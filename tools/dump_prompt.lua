@@ -43,7 +43,7 @@ if args.help then
 end
 
 -- Config global scheduler
-local ok, err = require("cgemma").scheduler.config({
+assert(require("cgemma").scheduler.config({
   num_threads = tonumber(args.num_threads),
   pin = tonumber(args.pin),
   skip_packages = tonumber(args.skip_packages),
@@ -52,51 +52,35 @@ local ok, err = require("cgemma").scheduler.config({
   max_clusters = tonumber(args.max_clusters),
   skip_lps = tonumber(args.skip_lps),
   max_lps = tonumber(args.max_lps)
-})
-if not ok then
-  error("Opoos! "..err)
-end
+}))
 
 print("Loading model ...")
 -- Create a Gemma instance
-local gemma, err = require("cgemma").new({
+local gemma = assert(require("cgemma").new({
   tokenizer = args.tokenizer or "tokenizer.spm",
   weights = args.weights or "4b-it-sfp.sbs",
   map = args.map
-})
-if not gemma then
-  error("Opoos! "..err)
-end
+}))
 
-local image, err
+local image
 if args.image then
   print("Embedding image ...")
-  image, err = gemma:embed_image(args.image)
-  if not image then
-    error("Opoos! "..err)
-  end
+  image = assert(gemma:embed_image(args.image))
 end
 
 -- Create a session
-local session, err = gemma:session({
+local session = assert(gemma:session({
   seq_len = tonumber(args.seq_len),
   max_generated_tokens = tonumber(args.max_generated_tokens),
   prefill_tbatch = tonumber(args.prefill_tbatch),
   temperature = tonumber(args.temperature),
   top_k = tonumber(args.top_k),
   no_wrapping = true
-})
-if not session then
-  error("Opoos! "..err)
-end
+}))
 if args.kv_cache then
   -- Restore the previous session
-  local ok, err = session:load(args.kv_cache)
-  if ok then
-    print("Previous session restored")
-  else
-    print("Opoos! "..err)
-  end
+  assert(session:load(args.kv_cache))
+  print("Previous session restored")
 end
 
 print("Reading prompt ...")
@@ -126,22 +110,15 @@ else
     return true
   end
 end
-local ok, err
 if image then
-  ok, err = session(image, io.read("*a"), stream_fn)
+  assert(session(image, io.read("*a"), stream_fn))
 else
-  ok, err = session(io.read("*a"), stream_fn)
-end
-if not ok then
-  error("Opoos! "..err)
+  assert(session(io.read("*a"), stream_fn))
 end
 print()
 
 -- Dump the current session to "dump.bin"
-local ok, err = session:dump(args.output or "dump.bin")
-if not ok then
-  error("Opoos! "..err)
-end
+assert(session:dump(args.output or "dump.bin"))
 print(string.format("Done! Session states of the prompt have been dumped to \"%s\"", args.output or "dump.bin"))
 if args.stats then
   print("\n\nStatistics:\n")

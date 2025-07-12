@@ -32,19 +32,13 @@ sudo make install
 
 ```lua
 -- Create a Gemma instance
-local gemma, err = require("cgemma").new({
+local gemma = assert(require("cgemma").new({
   tokenizer = "/path/to/tokenizer.spm",
   weights = "/path/to/4b-it-sfp.sbs"
-})
-if not gemma then
-  error("Opoos! "..err)
-end
+}))
 
 -- Create a chat session
-local session, err = gemma:session()
-if not session then
-  error("Opoos! "..err)
-end
+local session = assert(gemma:session())
 
 while true do
   print("New conversation started")
@@ -58,11 +52,7 @@ while true do
       return
     end
     -- Generate reply
-    local reply, err = session(text)
-    if not reply then
-      error("Opoos! "..err)
-    end
-    print("reply: ", reply)
+    print("reply: ", assert(session(text)))
   end
 
   print("Exceed the maximum number of tokens")
@@ -323,12 +313,9 @@ After migration, you can create a Gemma instance using the new weights file like
 
 ```lua
 -- Create a Gemma instance
-local gemma, err = require("cgemma").new({
+local gemma = assert(require("cgemma").new({
   weights = "/path/to/2.0-2b-it-sfp-single.sbs"
-})
-if not gemma then
-  error("Opoos! "..err)
-end
+}))
 ```
 
 ## License

@@ -15,33 +15,24 @@ if args.help then
 end
 
 -- Create a Gemma instance
-local gemma, err = require("cgemma").new({
+local gemma = assert(require("cgemma").new({
   tokenizer = args.tokenizer or "tokenizer.spm",
   weights = args.weights or "4b-it-sfp.sbs"
-})
-if not gemma then
-  error("Opoos! "..err)
-end
+}))
 
-local image, err
+local image
 if args.image then
   -- Load image data
-  image, err = gemma:embed_image(args.image)
-  if not image then
-    error("Opoos! "..err)
-  end
+  image = assert(gemma:embed_image(args.image))
 end
 
 -- Create a chat session
-local session, err = gemma:session({
+local session = assert(gemma:session({
   seq_len = tonumber(args.seq_len),
   max_generated_tokens = tonumber(args.max_generated_tokens),
   temperature = tonumber(args.temperature),
   top_k = tonumber(args.top_k) or 5
-})
-if not session then
-  error("Opoos! "..err)
-end
+}))
 
 while true do
   if args.kv_cache then
@@ -64,19 +55,12 @@ while true do
       if args.kv_cache then
         print("End of file, dumping current session ...")
         -- Dump the current session
-        local ok, err = session:dump(args.kv_cache)
-        if not ok then
-          error("Opoos! "..err)
-        end
+        assert(session:dump(args.kv_cache))
       end
       print("Done")
       return
     end
-    local reply, err = session(unpack(image and {image, text} or {text}))
-    if not reply then
-      error("Opoos! "..err)
-    end
-    print("reply: ", reply)
+    print("reply: ", assert(session(unpack(image and {image, text} or {text}))))
 
     if args.stats then
       print("\n\nStatistics:\n")
