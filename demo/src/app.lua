@@ -1,11 +1,13 @@
-local ok, err = require("cgemma").scheduler.config(config().scheduler)
-if not ok then
+local sched, err = require("cgemma").scheduler(config().scheduler)
+if not sched then
   ngx.log(ngx.ERR, "cgemma error: ", err)
 end
 
 function gemma_inst()
   if not worker_gemma_inst then
-    local gemma, err = require("cgemma").new(config().gemma)
+    local gemma_cfg = config().gemma
+    gemma_cfg.scheduler = sched
+    local gemma, err = require("cgemma").new(gemma_cfg)
     if not gemma then
       ngx.log(ngx.ERR, "cgemma error: ", err)
       ngx.exit(ngx.HTTP_INTERNAL_SERVER_ERROR)

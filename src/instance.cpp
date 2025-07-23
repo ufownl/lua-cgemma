@@ -32,15 +32,19 @@ int disabled_tokens(lua_State* L) {
 
 namespace cgemma {
 
-instance::instance(int argc, char* argv[], unsigned int seed)
+instance::instance(int argc, char* argv[], unsigned int seed, scheduler* sched)
   : args_(argc, argv)
-  , rnd_(seed) {
-  env_ = std::make_unique<gcpp::MatMulEnv>(gcpp::ThreadingContext::Get());
+  , rnd_(seed)
+  , sched_(sched) {
+  if (!sched_) {
+    default_sched_ = std::make_unique<scheduler>();
+    sched_ = default_sched_.get();
+  }
   // Disable heuristics loading weights into BF16
   gcpp::InferenceArgs infa;
   infa.prefill_tbatch_size = 0;
   infa.decode_qbatch_size = 0;
-  model_ = std::make_unique<gcpp::Gemma>(args_, infa, env_->ctx.pools);
+  model_ = std::make_unique<gcpp::Gemma>(args_, infa, threading_ctx());
 }
 
 bool instance::instruction_tuned() const {
@@ -120,8 +124,11 @@ int instance::create(lua_State* L) {
       seed = rd();
     }
     lua_pop(L, 1);
+    lua_getfield(L, 1, "scheduler");
+    auto sched = scheduler::to(L, -1);
+    lua_pop(L, 1);
     auto ud = lua_newuserdata(L, sizeof(instance));
-    auto inst = new(ud) instance(argc, argv, seed);
+    auto inst = new(ud) instance(argc, argv, seed, sched);
     luaL_getmetatable(L, name);
     lua_setmetatable(L, -2);
     lua_getfield(L, 1, "disabled_words");

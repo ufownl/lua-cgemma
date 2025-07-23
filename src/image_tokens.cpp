@@ -74,12 +74,14 @@ int create(lua_State* L) {
     gcpp::ImageTokens tks(
       "image_tokens",
       gcpp::Extents2D(model_cfg.vit_config.seq_len / (model_cfg.vit_config.pool_dim * model_cfg.vit_config.pool_dim), model_cfg.model_dim),
+      inst->threading_ctx().allocator,
       gcpp::MatPadding::kOdd
     );
+    tks.AllocateAndAttachRowPtrs(inst->matmul_env().row_ptrs);
     gcpp::RuntimeConfig cfg;
     cfg.gen = &inst->rnd();
     cfg.verbosity = 0;
-    inst->model().GenerateImageTokens(cfg, tks.Rows(), img, tks, inst->env());
+    inst->model().GenerateImageTokens(cfg, tks.Rows(), img, tks, inst->matmul_env());
     auto ud = lua_newuserdata(L, sizeof(gcpp::ImageTokens));
     new(ud) gcpp::ImageTokens(std::move(tks));
     luaL_getmetatable(L, name);

@@ -29,9 +29,9 @@ void generate(cgemma::session* sess, const gcpp::ImageTokens* image, const std::
       prefix_end = prompt.size();
     }
     cfg.image_tokens = image;
-    sess->inst()->model().Generate(cfg, gcpp::PromptTokens(prompt.data(), prompt.size()), sess->pos(), prefix_end, sess->kv_cache(), sess->inst()->env(), sess->timing_info());
+    sess->inst()->model().Generate(cfg, gcpp::PromptTokens(prompt.data(), prompt.size()), sess->pos(), prefix_end, sess->kv_cache(), sess->inst()->matmul_env(), sess->timing_info());
   } else {
-    sess->inst()->model().Generate(cfg, gcpp::PromptTokens(prompt.data(), prompt.size()), sess->pos(), sess->kv_cache(), sess->inst()->env(), sess->timing_info());
+    sess->inst()->model().Generate(cfg, gcpp::PromptTokens(prompt.data(), prompt.size()), sess->pos(), sess->kv_cache(), sess->inst()->matmul_env(), sess->timing_info());
   }
 }
 
@@ -320,7 +320,7 @@ session::session(instance* inst, int argc, char* argv[], bool no_wrapping)
   : inst_(inst)
   , args_(argc, argv)
   , no_wrapping_(no_wrapping)
-  , kv_cache_(inst->model().GetModelConfig(), args_) {
+  , kv_cache_(inst->model().GetModelConfig(), args_, inst->threading_ctx().allocator) {
   // nop
 }
 

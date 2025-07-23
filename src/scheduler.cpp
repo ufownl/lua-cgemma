@@ -6,12 +6,61 @@ namespace {
 
 constexpr const char name[] = "cgemma.scheduler";
 
-int config(lua_State* L) {
-  if (gcpp::ThreadingContext::IsInitialized()) {
-    lua_pushnil(L);
-    lua_pushstring(L, "Scheduler had been initialized.");
-    return 2;
-  }
+int cpu_topology(lua_State* L) {
+  auto sched = cgemma::scheduler::check(L, 1);
+  lua_pushstring(L, sched->cpu_topology());
+  return 1;
+}
+
+int destroy(lua_State* L) {
+  cgemma::scheduler::check(L, 1)->~scheduler();
+  return 0;
+}
+
+}
+
+namespace cgemma {
+
+scheduler::scheduler()
+  : ctx_(args_)
+  , env_(ctx_) {
+  // nop
+}
+
+scheduler::scheduler(int args, char* argv[])
+  : args_(args, argv)
+  , ctx_(args_)
+  , env_(ctx_) {
+  // nop
+}
+
+void scheduler::declare(lua_State* L) {
+  constexpr const luaL_Reg metatable[] = {
+    {"__gc", destroy},
+    {nullptr, nullptr}
+  };
+  constexpr const luaL_Reg methods[] = {
+    {"cpu_topology", ::cpu_topology},
+    {nullptr, nullptr}
+  };
+  luaL_newmetatable(L, name);
+  luaL_register(L, nullptr, metatable);
+  lua_pushlstring(L, name, sizeof(name) - 1);
+  lua_setfield(L, -2, "_NAME");
+  lua_newtable(L);
+  luaL_register(L, nullptr, methods);
+  lua_setfield(L, -2, "__index");
+}
+
+scheduler* scheduler::to(lua_State* L, int index) {
+  return static_cast<scheduler*>(utils::userdata(L, index, name));
+}
+
+scheduler* scheduler::check(lua_State* L, int index) {
+  return static_cast<scheduler*>(luaL_checkudata(L, index, name));
+}
+
+int scheduler::create(lua_State* L) {
   constexpr const char* available_options[] = {
     "--num_threads", "--pin", "--bind",
     "--skip_packages", "--max_packages",
@@ -21,32 +70,28 @@ int config(lua_State* L) {
   constexpr const int n = sizeof(available_options) / sizeof(available_options[0]);
   int argc = 1;
   char* argv[n * 2 + 1] = {const_cast<char*>("lua-cgemma")};
-  luaL_checktype(L, 1, LUA_TTABLE);
-  for (auto opt: available_options) {
-    auto k = opt + 2;
-    lua_getfield(L, 1, k);
-    auto v = lua_tostring(L, -1);
-    if (v) {
-      argv[argc++] = const_cast<char*>(opt);
-      argv[argc++] = const_cast<char*>(v);
+  auto nargs = lua_gettop(L);
+  if (nargs > 0) {
+    luaL_checktype(L, 1, LUA_TTABLE);
+    for (auto opt: available_options) {
+      auto k = opt + 2;
+      lua_getfield(L, 1, k);
+      auto v = lua_tostring(L, -1);
+      if (v) {
+        argv[argc++] = const_cast<char*>(opt);
+        argv[argc++] = const_cast<char*>(v);
+      }
+      lua_pop(L, 1);
     }
-    lua_pop(L, 1);
   }
-  gcpp::ThreadingContext::SetArgs(gcpp::ThreadingArgs(argc, argv));
-  if (gcpp::ThreadingContext::IsInitialized()) {
-    lua_pushnil(L);
-    lua_pushstring(L, "Scheduler had been initialized.");
-    return 2;
-  }
-  lua_pushboolean(L, 1);
-  return 1;
-}
-
-int cpu_topology(lua_State* L) {
+  auto ud = lua_newuserdata(L, sizeof(scheduler));
   try {
-    lua_pushstring(L, gcpp::ThreadingContext::Get().topology.TopologyString());
+    new(ud) scheduler(argc, argv);
+    luaL_getmetatable(L, name);
+    lua_setmetatable(L, -2);
     return 1;
   } catch (const std::exception& e) {
+    lua_pop(L, 1);
     lua_pushnil(L);
     lua_pushstring(L, e.what());
     return 2;
@@ -54,19 +99,3 @@ int cpu_topology(lua_State* L) {
 }
 
 }
-
-namespace cgemma { namespace scheduler {
-
-void declare(lua_State* L) {
-  constexpr const luaL_Reg entries[] = {
-    {"config", config},
-    {"cpu_topology", cpu_topology},
-    {nullptr, nullptr}
-  };
-  lua_newtable(L);
-  luaL_register(L, nullptr, entries);
-  lua_pushliteral(L, "cgemma.scheduler");
-  lua_setfield(L, -2, "_NAME");
-}
-
-} }

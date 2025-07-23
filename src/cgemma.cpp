@@ -3,7 +3,6 @@
 #include "session.hpp"
 #include "image_tokens.hpp"
 #include "batch.hpp"
-#include "scheduler.hpp"
 #include <hwy/timer.h>
 #include <hwy/per_target.h>
 #include <hwy/targets.h>
@@ -41,10 +40,12 @@ int info(lua_State* L) {
 int luaopen_cgemma(lua_State* L) {
   constexpr const luaL_Reg entries[] = {
     {"info", info},
+    {"scheduler", cgemma::scheduler::create},
     {"new", cgemma::instance::create},
     {"batch", cgemma::batch},
     {nullptr, nullptr}
   };
+  cgemma::scheduler::declare(L);
   cgemma::instance::declare(L);
   cgemma::session::declare(L);
   cgemma::image_tokens::declare(L);
@@ -55,7 +56,5 @@ int luaopen_cgemma(lua_State* L) {
   lua_setfield(L, -2, "_NAME");
   lua_pushliteral(L, "1.0");
   lua_setfield(L, -2, "_VERSION");
-  cgemma::scheduler::declare(L);
-  lua_setfield(L, -2, "scheduler");
   return 1;
 }

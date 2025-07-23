@@ -43,7 +43,7 @@ if args.help then
 end
 
 -- Config global scheduler
-assert(require("cgemma").scheduler.config({
+local sched = assert(require("cgemma").scheduler({
   num_threads = tonumber(args.num_threads),
   pin = tonumber(args.pin),
   skip_packages = tonumber(args.skip_packages),
@@ -59,7 +59,8 @@ print("Loading model ...")
 local gemma = assert(require("cgemma").new({
   tokenizer = args.tokenizer or "tokenizer.spm",
   weights = args.weights or "4b-it-sfp.sbs",
-  map = args.map
+  map = args.map,
+  scheduler = sched
 }))
 
 local image

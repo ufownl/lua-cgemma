@@ -68,13 +68,13 @@ end
 
 Show information of cgemma module.
 
-### cgemma.scheduler.config
+### cgemma.scheduler
 
-**syntax:** `<boolean>ok, <string>err = cgemma.scheduler.config(<table>options)`
+**syntax:** `<cgemma.scheduler>sched, <string>err = cgemma.scheduler([<table>options])`
 
-Configure the backend scheduler.
+Create a scheduler instance.
 
-A successful call returns `true`. Otherwise, it returns `false` and a string describing the error.
+A successful call returns a scheduler instance. Otherwise, it returns `nil` and a string describing the error.
 
 Available options and default values:
 
@@ -92,19 +92,11 @@ Available options and default values:
 }
 ```
 
-> [!NOTE]
-> This method can only be called for configuration before the backend scheduler initialization is triggered. If the backend scheduler is triggered without being configured, it will be initialized with default options.
-
 ### cgemma.scheduler.cpu\_topology
 
-**syntax:** `<string>desc, <string>err = cgemma.scheduler.cpu_topology()`
+**syntax:** `<string>desc = sched:cpu_topology()`
 
 Query CPU topology.
-
-A successful call returns the CPU topology information. Otherwise, it returns `nil` and a string describing the error.
-
-> [!NOTE]
-> Calling this method will trigger the backend scheduler initialization.
 
 ### cgemma.new
 
@@ -123,13 +115,14 @@ Available options:
   map = -1,  -- Enable memory-mapping? (-1 means auto, 0 means no, 1 means yes)
   to_bf16 = -1,  -- Convert weights to bf16? (-1 means auto, 0 means no, 1 means yes)
   seed = 42,  -- Random seed. (default is random setting)
+  scheduler = sched_inst,  -- Instance of scheduler, if not provided a default
+                           -- scheduler will be attached.
   disabled_words = {...},  -- Words you don't want to generate.
 }
 ```
 
 > [!NOTE]
-> 1. If the weights file is not in the new single-file format, then `tokenizer` and `model` options are required;
-> 2. Calling this method will trigger the backend scheduler initialization.
+> If the weights file is not in the new single-file format, then `tokenizer` are required;
 
 ### cgemma.instance.disabled\_tokens
 

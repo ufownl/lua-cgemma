@@ -1,6 +1,5 @@
 function config()
   return {
-    scheduler = {},
     gemma = {
       tokenizer = "tokenizer.spm",
       weights = "4b-it-sfp.sbs"
