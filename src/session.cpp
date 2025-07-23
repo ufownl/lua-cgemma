@@ -319,9 +319,8 @@ namespace cgemma {
 session::session(instance* inst, int argc, char* argv[], bool no_wrapping)
   : inst_(inst)
   , args_(argc, argv)
-  , no_wrapping_(no_wrapping)
-  , kv_cache_(inst->model().GetModelConfig(), args_, inst->threading_ctx().allocator) {
-  // nop
+  , no_wrapping_(no_wrapping) {
+  kv_cache_ = std::make_unique<gcpp::KVCache>(inst_->model().GetModelConfig(), args_, inst_->threading_ctx().allocator);
 }
 
 std::vector<int> session::tokenize(const char* text, size_t len) const {

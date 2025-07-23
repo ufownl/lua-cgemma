@@ -19,8 +19,7 @@ public:
   instance* inst() const { return inst_; }
   const gcpp::InferenceArgs& args() const { return args_; }
   size_t pos() const { return pos_; }
-  const gcpp::KVCache& kv_cache() const { return kv_cache_; }
-  gcpp::KVCache& kv_cache() { return kv_cache_; }
+  gcpp::KVCache& kv_cache() const { return *kv_cache_; }
   const gcpp::TimingInfo& timing_info() const { return timing_info_; }
   gcpp::TimingInfo& timing_info() { return timing_info_; }
 
@@ -41,7 +40,7 @@ private:
   gcpp::InferenceArgs args_;
   bool no_wrapping_;
   size_t pos_ {0};
-  gcpp::KVCache kv_cache_;
+  std::unique_ptr<gcpp::KVCache> kv_cache_;
   gcpp::TimingInfo timing_info_;
 };
 

@@ -21,19 +21,6 @@ int destroy(lua_State* L) {
 
 namespace cgemma {
 
-scheduler::scheduler()
-  : ctx_(args_)
-  , env_(ctx_) {
-  // nop
-}
-
-scheduler::scheduler(int args, char* argv[])
-  : args_(args, argv)
-  , ctx_(args_)
-  , env_(ctx_) {
-  // nop
-}
-
 void scheduler::declare(lua_State* L) {
   constexpr const luaL_Reg metatable[] = {
     {"__gc", destroy},
