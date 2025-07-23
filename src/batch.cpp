@@ -151,7 +151,9 @@ namespace cgemma {
 
 int batch(lua_State* L) {
   try {
-    auto[image, sess_ctxs] = parse_args(L);
+    const gcpp::ImageTokens* image;
+    std::vector<cgemma::session_context> sess_ctxs;
+    std::tie(image, sess_ctxs) = parse_args(L);
     auto cfg = parse_config(sess_ctxs);
     cfg.verbosity = 0;
     auto inst = sess_ctxs.front().sess->inst();
