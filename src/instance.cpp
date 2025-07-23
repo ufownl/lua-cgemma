@@ -114,6 +114,7 @@ int instance::create(lua_State* L) {
     }
     lua_pop(L, 1);
   }
+  auto ud = lua_newuserdata(L, sizeof(instance));
   try {
     unsigned int seed;
     lua_getfield(L, 1, "seed");
@@ -127,7 +128,6 @@ int instance::create(lua_State* L) {
     lua_getfield(L, 1, "scheduler");
     auto sched = scheduler::to(L, -1);
     lua_pop(L, 1);
-    auto ud = lua_newuserdata(L, sizeof(instance));
     auto inst = new(ud) instance(argc, argv, seed, sched);
     luaL_getmetatable(L, name);
     lua_setmetatable(L, -2);
