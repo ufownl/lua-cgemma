@@ -9,7 +9,7 @@ namespace {
 
 int init_arg_state(lua_State* L, int narg, const gcpp::ImageTokens* image, std::vector<cgemma::session_context>& sess_ctxs) {
   auto sess = cgemma::session::check(L, narg);
-  if (sess->inst()->model().GetModelConfig().wrapping == gcpp::PromptWrapping::PALIGEMMA) {
+  if (sess->inst()->model().Config().wrapping == gcpp::PromptWrapping::PALIGEMMA) {
     sess->set_pos(0);
   } else if (sess->pos() >= sess->inst()->max_tokens()) {
     throw std::invalid_argument("Sessions in a batch must not be ended.");
@@ -37,7 +37,7 @@ std::tuple<const gcpp::ImageTokens*, std::vector<cgemma::session_context>> parse
       auto& ctx = sess_ctxs.back();
       if (image) {
         ctx.prompt = ctx.sess->tokenize(*image, text, len);
-        if (ctx.sess->inst()->model().GetModelConfig().wrapping == gcpp::PromptWrapping::PALIGEMMA) {
+        if (ctx.sess->inst()->model().Config().wrapping == gcpp::PromptWrapping::PALIGEMMA) {
           ctx.prefix_end = ctx.prompt.size();
         }
       } else {
@@ -204,7 +204,7 @@ int batch(lua_State* L) {
       };
     }
     if (image) {
-      if (inst->model().GetModelConfig().wrapping == gcpp::PromptWrapping::PALIGEMMA) {
+      if (inst->model().Config().wrapping == gcpp::PromptWrapping::PALIGEMMA) {
         size_t prefix_end = 0;
         for (const auto& ctx: sess_ctxs) {
           prefix_end = std::max(prefix_end, ctx.prefix_end);

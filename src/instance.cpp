@@ -48,7 +48,7 @@ instance::instance(int argc, char* argv[], unsigned int seed, scheduler* sched)
 }
 
 bool instance::instruction_tuned() const {
-  switch (model_->GetModelConfig().wrapping) {
+  switch (model_->Config().wrapping) {
     case gcpp::PromptWrapping::GEMMA_IT:
     case gcpp::PromptWrapping::GEMMA_VLM:
       return true;
@@ -58,7 +58,7 @@ bool instance::instruction_tuned() const {
 }
 
 bool instance::eos(int token) const {
-  return token == model_->GetModelConfig().eos_id || instruction_tuned() && token == model_->GetModelConfig().secondary_eos_id;
+  return token == model_->Config().eos_id || instruction_tuned() && token == model_->Config().secondary_eos_id;
 }
 
 void instance::declare(lua_State* L) {

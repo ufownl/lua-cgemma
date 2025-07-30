@@ -69,7 +69,7 @@ int create(lua_State* L) {
       }
       img.Set(width, height, values.data());
     }
-    auto model_cfg = inst->model().GetModelConfig();
+    auto model_cfg = inst->model().Config();
     img.Resize(model_cfg.vit_config.image_size, model_cfg.vit_config.image_size);
     gcpp::ImageTokens tks(
       "image_tokens",
