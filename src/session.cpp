@@ -4,7 +4,6 @@
 #include "utils/file_io.hpp"
 #include <stdexcept>
 #include <algorithm>
-#include <utility>
 #include <numeric>
 #include <array>
 
@@ -24,16 +23,20 @@ void generate(cgemma::session* sess, const gcpp::ImageTokens* image, const std::
     };
   }
   if (image) {
-    cfg.prefill_tbatch_size = prompt.size();
+    size_t prefix_end = 0;
+    if (sess->inst()->model().Config().wrapping == gcpp::PromptWrapping::PALIGEMMA) {
+      cfg.prefill_tbatch_size = prompt.size();
+      prefix_end = prompt.size();
+    }
     cfg.image_tokens = image;
-    sess->inst()->model().Generate(cfg, gcpp::PromptTokens(prompt.data(), prompt.size()), sess->pos(), prompt.size(), sess->kv_cache(), sess->timing_info());
+    sess->inst()->model().Generate(cfg, gcpp::PromptTokens(prompt.data(), prompt.size()), sess->pos(), prefix_end, sess->kv_cache(), sess->inst()->matmul_env(), sess->timing_info());
   } else {
-    sess->inst()->model().Generate(cfg, gcpp::PromptTokens(prompt.data(), prompt.size()), sess->pos(), sess->kv_cache(), sess->timing_info());
+    sess->inst()->model().Generate(cfg, gcpp::PromptTokens(prompt.data(), prompt.size()), sess->pos(), sess->kv_cache(), sess->inst()->matmul_env(), sess->timing_info());
   }
 }
 
 int stream_mode(lua_State* L, cgemma::session* sess, const gcpp::ImageTokens* image, const std::vector<int>& prompt, int stream_fn) {
-  if (sess->inst()->model().Info().wrapping == gcpp::PromptWrapping::PALIGEMMA) {
+  if (sess->inst()->model().Config().wrapping == gcpp::PromptWrapping::PALIGEMMA) {
     sess->set_pos(0);
   }
   auto start_pos = sess->pos();
@@ -72,7 +75,7 @@ int stream_mode(lua_State* L, cgemma::session* sess, const gcpp::ImageTokens* im
 }
 
 int normal_mode(lua_State* L, cgemma::session* sess, const gcpp::ImageTokens* image, const std::vector<int>& prompt) {
-  if (sess->inst()->model().Info().wrapping == gcpp::PromptWrapping::PALIGEMMA) {
+  if (sess->inst()->model().Config().wrapping == gcpp::PromptWrapping::PALIGEMMA) {
     sess->set_pos(0);
   }
   auto start_pos = sess->pos();
@@ -141,53 +144,74 @@ enum class kv_cache_field: size_t {
   end
 };
 
-class kv_cache_size_store {
+template <class T>
+class kv_cache_blob {
 public:
-  kv_cache_size_store(const gcpp::ModelConfig& cfg, size_t pos) {
-    store_[static_cast<size_t>(kv_cache_field::kv_cache)] = cfg.CachePosSize() * pos * sizeof(std::declval<gcpp::KVCache>().kv_cache[0]);
-    auto griffin_layers = cfg.NumLayersOfType(gcpp::LayerAttentionType::kGriffinRecurrentBlock);
-    decltype(std::declval<gcpp::LayerConfig>().conv1d_width) conv1d_width = 0;
-    for (const auto& layer_cfg: cfg.layer_configs) {
-      conv1d_width = std::max(conv1d_width, layer_cfg.conv1d_width);
+  template <class U>
+  kv_cache_blob(U sess, size_t resumed_pos = 0) {
+    if (sess->inst()->model().Config().KVCacheCols() > 0) {
+      auto& kv_cache = sess->kv_cache().kv_cache;
+      auto pos = std::min(resumed_pos ? resumed_pos : sess->pos(), kv_cache.Rows());
+      ptrs_[static_cast<size_t>(kv_cache_field::kv_cache)] = kv_cache.RowBytes(0);
+      sizes_[static_cast<size_t>(kv_cache_field::kv_cache)] = pos * kv_cache.Stride() * kv_cache.ElementBytes();
+    } else {
+      ptrs_[static_cast<size_t>(kv_cache_field::kv_cache)] = nullptr;
+      sizes_[static_cast<size_t>(kv_cache_field::kv_cache)] = 0;
     }
-    store_[static_cast<size_t>(kv_cache_field::conv1d_cache)] = griffin_layers * (conv1d_width == 0 ? 0 : conv1d_width - 1) * cfg.model_dim * sizeof(std::declval<gcpp::KVCache>().conv1d_cache[0]);
-    store_[static_cast<size_t>(kv_cache_field::rglru_cache)] = griffin_layers * cfg.model_dim * sizeof(std::declval<gcpp::KVCache>().rglru_cache[0]);
+#define GRIFFIN_CACHE(FIELD)                                                                                      \
+  do {                                                                                                            \
+    auto& field = sess->kv_cache().FIELD;                                                                         \
+    if (field.Rows() > 0) {                                                                                       \
+      ptrs_[static_cast<size_t>(kv_cache_field::FIELD)] = field.RowBytes(0);                                      \
+      sizes_[static_cast<size_t>(kv_cache_field::FIELD)] = field.Rows() * field.Stride() * field.ElementBytes();  \
+    } else {                                                                                                      \
+      ptrs_[static_cast<size_t>(kv_cache_field::FIELD)] = nullptr;                                                \
+      sizes_[static_cast<size_t>(kv_cache_field::FIELD)] = 0;                                                     \
+    }                                                                                                             \
+  } while (false)
+    GRIFFIN_CACHE(conv1d_cache);
+    GRIFFIN_CACHE(rglru_cache);
+#undef GRIFFIN_CACHE
   }
 
   template <kv_cache_field Field>
-  size_t get() const { return store_[static_cast<size_t>(Field)]; }
+  T buffer() const { return ptrs_[static_cast<size_t>(Field)]; }
 
-  size_t total() const {
-    return std::accumulate(store_.begin() + 1, store_.end(), store_.front());
+  template <kv_cache_field Field>
+  size_t size() const { return sizes_[static_cast<size_t>(Field)]; }
+
+  size_t total_size() const {
+    return std::accumulate(sizes_.begin() + 1, sizes_.end(), sizes_.front());
   }
 
 private:
-  std::array<size_t, static_cast<size_t>(kv_cache_field::end)> store_;
+  std::array<T, static_cast<size_t>(kv_cache_field::end)> ptrs_;
+  std::array<size_t, static_cast<size_t>(kv_cache_field::end)> sizes_;
 };
 
 size_t dump_impl(char* buf, const cgemma::session* sess) {
-  auto type = sess->inst()->model().Info().model;
+  auto type = sess->inst()->model().Config().model;
   uint16_t pos = sess->pos();
-  kv_cache_size_store size(sess->inst()->model().GetModelConfig(), std::min(sess->pos(), sess->kv_cache().seq_len));
+  kv_cache_blob<const void*> blob(sess);
   if (buf) {
     std::memcpy(buf, name, sizeof(name) - 1);
     buf[sizeof(name) - 1] = static_cast<char>(type);
     buf += sizeof(name);
     std::memcpy(buf, &pos, sizeof(pos));
     buf += sizeof(pos);
-#define DUMP_CACHE(FIELD)                                                                 \
-  do {                                                                                    \
-    if (size.get<kv_cache_field::FIELD>() > 0) {                                          \
-      std::memcpy(buf, sess->kv_cache().FIELD.get(), size.get<kv_cache_field::FIELD>());  \
-      buf += size.get<kv_cache_field::FIELD>();                                           \
-    }                                                                                     \
+#define DUMP_CACHE(FIELD)                                                                         \
+  do {                                                                                            \
+    if (blob.buffer<kv_cache_field::FIELD>()) {                                                   \
+      std::memcpy(buf, blob.buffer<kv_cache_field::FIELD>(), blob.size<kv_cache_field::FIELD>()); \
+      buf += blob.size<kv_cache_field::FIELD>();                                                  \
+    }                                                                                             \
   } while (false)
     DUMP_CACHE(kv_cache);
     DUMP_CACHE(conv1d_cache);
     DUMP_CACHE(rglru_cache);
 #undef DUMP_CACHE
   }
-  return sizeof(name) + sizeof(pos) + size.total();
+  return sizeof(name) + sizeof(pos) + blob.total_size();
 }
 
 void load_impl(cgemma::session* sess, const char* buf, size_t n) {
@@ -200,23 +224,23 @@ void load_impl(cgemma::session* sess, const char* buf, size_t n) {
     }
   }
   auto type = static_cast<gcpp::Model>(buf[sizeof(name) - 1]);
-  if (type != sess->inst()->model().Info().model) {
+  if (type != sess->inst()->model().Config().model) {
     throw std::invalid_argument("Invalid dump format: model type mismatch");
   }
   buf += sizeof(name);
   size_t pos = *reinterpret_cast<const uint16_t*>(buf);
   buf += sizeof(uint16_t);
-  kv_cache_size_store size(sess->inst()->model().GetModelConfig(), std::min(pos, sess->kv_cache().seq_len));
-  if (n != sizeof(name) + sizeof(uint16_t) + size.total()) {
+  kv_cache_blob<void*> blob(sess, pos);
+  if (n != sizeof(name) + sizeof(uint16_t) + blob.total_size()) {
     throw std::invalid_argument("Invalid dump format: KVCache length mismatch");
   }
   sess->set_pos(pos);
-#define LOAD_CACHE(FIELD)                                                                 \
-  do {                                                                                    \
-    if (size.get<kv_cache_field::FIELD>() > 0) {                                          \
-      std::memcpy(sess->kv_cache().FIELD.get(), buf, size.get<kv_cache_field::FIELD>());  \
-      buf += size.get<kv_cache_field::FIELD>();                                           \
-    }                                                                                     \
+#define LOAD_CACHE(FIELD)                                                                         \
+  do {                                                                                            \
+    if (blob.buffer<kv_cache_field::FIELD>()) {                                                   \
+      std::memcpy(blob.buffer<kv_cache_field::FIELD>(), buf, blob.size<kv_cache_field::FIELD>()); \
+      buf += blob.size<kv_cache_field::FIELD>();                                                  \
+    }                                                                                             \
   } while (false)
   LOAD_CACHE(kv_cache);
   LOAD_CACHE(conv1d_cache);
@@ -296,66 +320,36 @@ session::session(instance* inst, int argc, char* argv[], bool no_wrapping)
   : inst_(inst)
   , args_(argc, argv)
   , no_wrapping_(no_wrapping) {
-  if (auto err = args_.Validate()) {
-    throw std::invalid_argument(err);
-  }
-  kv_cache_ = gcpp::KVCache::Create(inst->model().GetModelConfig(), args_.prefill_tbatch_size);
+  kv_cache_ = std::make_unique<gcpp::KVCache>(inst_->model().Config(), args_, inst_->threading_ctx().allocator);
 }
 
 std::vector<int> session::tokenize(const char* text, size_t len) const {
   auto prompt = tokenize_text(std::string(text, len));
   if (!no_wrapping_ && inst_->instruction_tuned()) {
-    return tokenize_wrap(prompt);
-  } else {
-    if (pos_ == 0) {
-      prompt.insert(prompt.cbegin(), gcpp::BOS_ID);
-    }
-    return prompt;
+    return inst_->model().ChatTemplate().Apply(pos_, prompt);
   }
+  if (pos_ == 0) {
+    prompt.insert(prompt.cbegin(), gcpp::BOS_ID);
+  }
+  return prompt;
 }
 
 std::vector<int> session::tokenize(const gcpp::ImageTokens& image, const char* text, size_t len) const {
   auto text_part = tokenize_text(std::string(text, len));
-  std::vector<int> prompt;
-  switch (inst_->model().Info().wrapping) {
-    case gcpp::PromptWrapping::PALIGEMMA: {
-      std::vector<int> sep;
-      if (!inst_->model().Tokenizer().Encode("\n", &sep)) {
-        throw std::runtime_error("Tokenizer encoding failed. (session::tokenize)");
+  switch (inst_->model().Config().wrapping) {
+    case gcpp::PromptWrapping::PALIGEMMA:
+      return inst_->model().ChatTemplate().WrapPali(text_part, image.Rows());
+    case gcpp::PromptWrapping::GEMMA_VLM:
+      if (!no_wrapping_) {
+        auto prompt = inst_->model().ChatTemplate().WrapVLM(text_part, image.Rows());
+        return inst_->model().ChatTemplate().Apply(pos_, prompt);
       }
-      prompt.reserve(image.BatchSize() + 1 + text_part.size() + sep.size());
-      prompt.resize(image.BatchSize(), PAD_ID);
-      prompt.push_back(gcpp::BOS_ID);
-      prompt.insert(prompt.cend(), text_part.cbegin(), text_part.cend());
-      prompt.insert(prompt.cend(), sep.cbegin(), sep.cend());
-      return prompt;
-    }
-    case gcpp::PromptWrapping::GEMMA_VLM: {
-      std::vector<int> soi;
-      soi.reserve(2);
-      if (!inst_->model().Tokenizer().Encode("\n\n<start_of_image>", &soi)) {
-        throw std::runtime_error("Tokenizer encoding failed. (session::tokenize)");
+      if (pos_ == 0) {
+        text_part.insert(text_part.cbegin(), gcpp::BOS_ID);
       }
-      std::vector<int> eoi;
-      eoi.reserve(2);
-      if (!inst_->model().Tokenizer().Encode("<end_of_image>\n\n", &eoi)) {
-        throw std::runtime_error("Tokenizer encoding failed. (session::tokenize)");
-      }
-      const auto prompt_size = text_part.size() + soi.size() + image.BatchSize() + eoi.size();
-      if (no_wrapping_ && pos_ == 0) {
-        prompt.reserve(1 + prompt_size);
-        prompt.push_back(gcpp::BOS_ID);
-      } else {
-        prompt.reserve(prompt_size);
-      }
-      prompt.insert(prompt.cend(), text_part.cbegin(), text_part.cend());
-      prompt.insert(prompt.cend(), soi.cbegin(), soi.cend());
-      prompt.insert(prompt.cend(), image.BatchSize(), -2);
-      prompt.insert(prompt.cend(), eoi.cbegin(), eoi.cend());
-      return no_wrapping_ ? prompt : tokenize_wrap(prompt);
-    }
+      return inst_->model().ChatTemplate().WrapVLM(text_part, image.Rows());
     default:
-      throw std::invalid_argument("Current variant does not support images.");
+      throw std::invalid_argument("Current variant does not support vision prompt.");
   }
 }
 
@@ -392,6 +386,7 @@ int session::create(lua_State* L) {
   auto nargs = lua_gettop(L);
   auto inst = instance::check(L, 1);
   constexpr const char* available_options[] = {
+    "--seq_len",
     "--max_generated_tokens",
     "--prefill_tbatch",
     "--decode_qbatch",
@@ -425,6 +420,7 @@ int session::create(lua_State* L) {
     lua_setmetatable(L, -2);
     return 1;
   } catch (const std::exception& e) {
+    lua_pop(L, 1);
     lua_pushnil(L);
     lua_pushstring(L, e.what());
     return 2;
@@ -444,36 +440,6 @@ std::vector<int> session::tokenize_text(const std::string& text) const {
     }, UNK_ID);
   }
   return prompt;
-}
-
-std::vector<int> session::tokenize_wrap(const std::vector<int>& input) const {
-  std::vector<int> sot_user;
-  sot_user.reserve(3);
-  if (!inst_->model().Tokenizer().Encode("<start_of_turn>user\n", &sot_user)) {
-    throw std::runtime_error("Tokenizer encoding failed. (session::tokenize_wrap)");
-  }
-  std::vector<int> sot_model;
-  sot_model.reserve(3);
-  if (!inst_->model().Tokenizer().Encode("<start_of_turn>model\n", &sot_model)) {
-    throw std::runtime_error("Tokenizer encoding failed. (session::tokenize_wrap)");
-  }
-  std::vector<int> eot;
-  eot.reserve(2);
-  if (!inst_->model().Tokenizer().Encode("<end_of_turn>\n", &eot)) {
-    throw std::runtime_error("Tokenizer encoding failed. (session::tokenize_wrap)");
-  }
-  std::vector<int> output;
-  output.reserve(eot.size() + sot_user.size() + input.size() + eot.size() + sot_model.size());
-  if (pos_ > 0) {
-    output.insert(output.cend(), eot.cbegin(), eot.cend());
-  } else {
-    output.push_back(gcpp::BOS_ID);
-  }
-  output.insert(output.cend(), sot_user.cbegin(), sot_user.cend());
-  output.insert(output.cend(), input.cbegin(), input.cend());
-  output.insert(output.cend(), eot.cbegin(), eot.cend());
-  output.insert(output.cend(), sot_model.cbegin(), sot_model.cend());
-  return output;
 }
 
 void push_timing(lua_State*L, const gcpp::TimingInfo& timing) {

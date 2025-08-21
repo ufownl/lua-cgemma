@@ -5,36 +5,34 @@ if args.help then
     "resty stream_mode.lua [options]"
   )
   print("  --image: Path of image file (PPM format: P6, binary).")
+  print("  --seq_len: Sequence length, capped by max context window of model. (default: 8192)")
+  print("  --max_generated_tokens: Maximum number of tokens to generate. (default: 2048)")
+  print("  --temperature: Temperature for top-K. (default: 1.0)")
+  print("  --top_k: Number of top-K tokens to sample from. (default: 5)")
   print("  --kv_cache: Path of KV cache file.")
   print("  --stats: Print statistics at end of turn.")
   return
 end
 
 -- Create a Gemma instance
-local gemma, err = require("cgemma").new({
+local gemma = assert(require("cgemma").new({
   tokenizer = args.tokenizer or "tokenizer.spm",
-  model = args.model or "gemma3-4b",
-  weights = args.weights or "4b-it-sfp.sbs",
-  weight_type = args.weight_type
-})
-if not gemma then
-  error("Opoos! "..err)
-end
+  weights = args.weights or "4b-it-sfp.sbs"
+}))
 
-local image, err
+local image
 if args.image then
   -- Load image data
-  image, err = gemma:embed_image(args.image)
-  if not image then
-    error("Opoos! "..err)
-  end
+  image = assert(gemma:embed_image(args.image))
 end
 
 -- Create a chat session
-local session, err = gemma:session({top_k = 5})
-if not session then
-  error("Opoos! "..err)
-end
+local session = assert(gemma:session({
+  seq_len = tonumber(args.seq_len),
+  max_generated_tokens = tonumber(args.max_generated_tokens),
+  temperature = tonumber(args.temperature),
+  top_k = tonumber(args.top_k) or 5
+}))
 
 while true do
   if args.kv_cache then
@@ -57,10 +55,7 @@ while true do
       if args.kv_cache then
         print("End of file, dumping current session ...")
         -- Dump the current session
-        local ok, err = session:dump(args.kv_cache)
-        if not ok then
-          error("Opoos! "..err)
-        end
+        assert(session:dump(args.kv_cache))
       end
       print("Done")
       return
@@ -85,10 +80,7 @@ while true do
       -- return `true` indicates success; return `false` indicates failure and terminates the generation
       return true
     end)
-    local ok, err = session(unpack(t))
-    if not ok then
-      error("Opoos! "..err)
-    end
+    assert(session(unpack(t)))
 
     if args.stats then
       print("\n\nStatistics:\n")

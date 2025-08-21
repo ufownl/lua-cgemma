@@ -3,8 +3,8 @@
 
 #include <lua.hpp>
 #include <gemma/gemma.h>
+#include <gemma/gemma_args.h>
 #include <paligemma/image.h>
-#include <util/app.h>
 #include <string>
 #include <vector>
 
@@ -19,8 +19,7 @@ public:
   instance* inst() const { return inst_; }
   const gcpp::InferenceArgs& args() const { return args_; }
   size_t pos() const { return pos_; }
-  const gcpp::KVCache& kv_cache() const { return kv_cache_; }
-  gcpp::KVCache& kv_cache() { return kv_cache_; }
+  gcpp::KVCache& kv_cache() const { return *kv_cache_; }
   const gcpp::TimingInfo& timing_info() const { return timing_info_; }
   gcpp::TimingInfo& timing_info() { return timing_info_; }
 
@@ -36,13 +35,12 @@ public:
 
 private:
   std::vector<int> tokenize_text(const std::string& text) const;
-  std::vector<int> tokenize_wrap(const std::vector<int>& tokens) const;
 
   instance* inst_;
   gcpp::InferenceArgs args_;
   bool no_wrapping_;
   size_t pos_ {0};
-  gcpp::KVCache kv_cache_;
+  std::unique_ptr<gcpp::KVCache> kv_cache_;
   gcpp::TimingInfo timing_info_;
 };
 

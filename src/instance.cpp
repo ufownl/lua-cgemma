@@ -1,5 +1,4 @@
 #include "instance.hpp"
-#include "scheduler.hpp"
 #include "image_tokens.hpp"
 #include "session.hpp"
 #include <stdexcept>
@@ -35,23 +34,21 @@ namespace cgemma {
 
 instance::instance(int argc, char* argv[], unsigned int seed, scheduler* sched)
   : args_(argc, argv)
-  , rnd_(seed) {
-  if (auto err = args_.Validate()) {
-    throw std::invalid_argument(err);
-  }
-  if (!sched) {
+  , rnd_(seed)
+  , sched_(sched) {
+  if (!sched_) {
     default_sched_ = std::make_unique<scheduler>();
-    sched = default_sched_.get();
+    sched_ = default_sched_.get();
   }
-  if (args_.Info().weight == gcpp::Type::kUnknown || args_.Info().model == gcpp::Model::UNKNOWN || args_.tokenizer.path.empty()) {
-    model_ = std::make_unique<gcpp::Gemma>(args_.weights, sched->env());
-  } else {
-    model_ = std::make_unique<gcpp::Gemma>(args_.tokenizer, args_.weights, args_.Info(), sched->env());
-  }
+  // Disable heuristics loading weights into BF16
+  gcpp::InferenceArgs infa;
+  infa.prefill_tbatch_size = 0;
+  infa.decode_qbatch_size = 0;
+  model_ = std::make_unique<gcpp::Gemma>(args_, infa, threading_ctx());
 }
 
 bool instance::instruction_tuned() const {
-  switch (model_->Info().wrapping) {
+  switch (model_->Config().wrapping) {
     case gcpp::PromptWrapping::GEMMA_IT:
     case gcpp::PromptWrapping::GEMMA_VLM:
       return true;
@@ -61,7 +58,7 @@ bool instance::instruction_tuned() const {
 }
 
 bool instance::eos(int token) const {
-  return token == model_->GetModelConfig().eos_id || instruction_tuned() && token == model_->GetModelConfig().secondary_eos_id;
+  return token == model_->Config().eos_id || instruction_tuned() && token == model_->Config().secondary_eos_id;
 }
 
 void instance::declare(lua_State* L) {
@@ -92,7 +89,7 @@ int instance::create(lua_State* L) {
   luaL_checktype(L, 1, LUA_TTABLE);
   constexpr const char* required_options[] = {"--weights"};
   constexpr const int n = sizeof(required_options) / sizeof(required_options[0]);
-  constexpr const char* optional_options[] = {"--tokenizer", "--model", "--weight_type"};
+  constexpr const char* optional_options[] = {"--tokenizer", "--map", "--to_bf16"};
   constexpr const int m = sizeof(optional_options) / sizeof(optional_options[0]);
   char* argv[(n + m) * 2 + 1] = {const_cast<char*>("lua-cgemma")};
   for (int i = 0; i < n; ++i) {
@@ -117,6 +114,7 @@ int instance::create(lua_State* L) {
     }
     lua_pop(L, 1);
   }
+  auto ud = lua_newuserdata(L, sizeof(instance));
   try {
     unsigned int seed;
     lua_getfield(L, 1, "seed");
@@ -130,8 +128,9 @@ int instance::create(lua_State* L) {
     lua_getfield(L, 1, "scheduler");
     auto sched = scheduler::to(L, -1);
     lua_pop(L, 1);
-    auto ud = lua_newuserdata(L, sizeof(instance));
     auto inst = new(ud) instance(argc, argv, seed, sched);
+    luaL_getmetatable(L, name);
+    lua_setmetatable(L, -2);
     lua_getfield(L, 1, "disabled_words");
     if (lua_istable(L, -1)) {
       lua_pushnil(L);
@@ -150,8 +149,6 @@ int instance::create(lua_State* L) {
       }
     }
     lua_pop(L, 1);
-    luaL_getmetatable(L, name);
-    lua_setmetatable(L, -2);
     return 1;
   } catch (const std::exception& e) {
     lua_pop(L, 1);

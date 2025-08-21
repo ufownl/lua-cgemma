@@ -1,5 +1,4 @@
 #include "cgemma.hpp"
-#include "scheduler.hpp"
 #include "instance.hpp"
 #include "session.hpp"
 #include "image_tokens.hpp"
@@ -32,7 +31,6 @@ int info(lua_State* L) {
   }
   std::cout << "Instruction Set          : " << hwy::TargetName(hwy::DispatchedTarget()) << " (" << hwy::VectorBytes() * 8 << " bits)" << std::endl;
   std::cout << "Hardware Concurrency     : " << std::thread::hardware_concurrency() << std::endl;
-  std::cout << "Compiled Config          : " << gcpp::CompiledConfig() << std::endl;
   std::cout << std::endl;
   return 0;
 }

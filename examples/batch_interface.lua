@@ -9,24 +9,15 @@ if args.help then
 end
 
 -- Create a Gemma instance
-local gemma, err = require("cgemma").new({
+local gemma = assert(require("cgemma").new({
   tokenizer = args.tokenizer or "tokenizer.spm",
-  model = args.model or "gemma3-4b",
-  weights = args.weights or "4b-it-sfp.sbs",
-  weight_type = args.weight_type
-})
-if not gemma then
-  error("Opoos! "..err)
-end
+  weights = args.weights or "4b-it-sfp.sbs"
+}))
 
 -- Create 3 chat sessions
 local sessions = {}
 for i = 1, 3 do
-  local session, err = gemma:session({top_k = 5})
-  if not session then
-    error("Opoos! "..err)
-  end
-  table.insert(sessions, session)
+  table.insert(sessions, assert(gemma:session({top_k = 5})))
 end
 
 -- Define callback function for stream mode
@@ -70,22 +61,14 @@ for i, queries in ipairs(turns) do
   print(string.format("Turn %d:\n", i))
 
   -- Make a batch call
-  local result, err = require("cgemma").batch(unpack(queries))
-  if not result then
-    error("Opoos! "..err)
-  end
+  local result = assert(require("cgemma").batch(unpack(queries)))
 
   -- Display the result of this batch call
   local idx = 1
   for j = 1, #queries do
     if type(queries[j]) == "string" then
       print(string.format("Q%d: %s\n", idx, queries[j]))
-      local resp, err = result(queries[j - 1])
-      if resp then
-        print(resp)
-      else
-        error("Opoos! "..err)
-      end
+      print(assert(result(queries[j - 1])))
       idx = idx + 1
     end
   end

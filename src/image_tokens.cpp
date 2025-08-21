@@ -7,7 +7,7 @@ namespace {
 constexpr const char name[] = "cgemma.image_tokens";
 
 int destroy(lua_State* L) {
-  cgemma::image_tokens::check(L, 1)->~RowVectorBatch();
+  cgemma::image_tokens::check(L, 1)->~MatStorageT();
   return 0;
 }
 
@@ -69,13 +69,19 @@ int create(lua_State* L) {
       }
       img.Set(width, height, values.data());
     }
-    auto model_cfg = inst->model().GetModelConfig();
+    auto model_cfg = inst->model().Config();
     img.Resize(model_cfg.vit_config.image_size, model_cfg.vit_config.image_size);
-    gcpp::ImageTokens tks(gcpp::Extents2D(model_cfg.vit_config.seq_len / (model_cfg.vit_config.pool_dim * model_cfg.vit_config.pool_dim), model_cfg.model_dim));
+    gcpp::ImageTokens tks(
+      "image_tokens",
+      gcpp::Extents2D(model_cfg.vit_config.seq_len / (model_cfg.vit_config.pool_dim * model_cfg.vit_config.pool_dim), model_cfg.model_dim),
+      inst->threading_ctx().allocator,
+      gcpp::MatPadding::kOdd
+    );
+    tks.AllocateAndAttachRowPtrs(inst->matmul_env().row_ptrs);
     gcpp::RuntimeConfig cfg;
     cfg.gen = &inst->rnd();
     cfg.verbosity = 0;
-    inst->model().GenerateImageTokens(cfg, img, tks);
+    inst->model().GenerateImageTokens(cfg, tks.Rows(), img, tks, inst->matmul_env());
     auto ud = lua_newuserdata(L, sizeof(gcpp::ImageTokens));
     new(ud) gcpp::ImageTokens(std::move(tks));
     luaL_getmetatable(L, name);

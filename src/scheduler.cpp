@@ -1,6 +1,6 @@
 #include "scheduler.hpp"
 #include "utils/laux.hpp"
-#include <util/allocator.h>
+#include <util/threading_context.h>
 
 namespace {
 
@@ -20,15 +20,6 @@ int destroy(lua_State* L) {
 }
 
 namespace cgemma {
-
-scheduler::scheduler() {
-  init();
-}
-
-scheduler::scheduler(int args, char* argv[])
-  : args_(args, argv) {
-  init();
-}
 
 void scheduler::declare(lua_State* L) {
   constexpr const luaL_Reg metatable[] = {
@@ -57,9 +48,8 @@ scheduler* scheduler::check(lua_State* L, int index) {
 }
 
 int scheduler::create(lua_State* L) {
-  auto nargs = lua_gettop(L);
   constexpr const char* available_options[] = {
-    "--num_threads", "--pin",
+    "--num_threads", "--pin", "--bind",
     "--skip_packages", "--max_packages",
     "--skip_clusters", "--max_clusters",
     "--skip_lps", "--max_lps",
@@ -67,6 +57,7 @@ int scheduler::create(lua_State* L) {
   constexpr const int n = sizeof(available_options) / sizeof(available_options[0]);
   int argc = 1;
   char* argv[n * 2 + 1] = {const_cast<char*>("lua-cgemma")};
+  auto nargs = lua_gettop(L);
   if (nargs > 0) {
     luaL_checktype(L, 1, LUA_TTABLE);
     for (auto opt: available_options) {
@@ -92,17 +83,6 @@ int scheduler::create(lua_State* L) {
     lua_pushstring(L, e.what());
     return 2;
   }
-}
-
-void scheduler::init() {
-  topology_ = std::make_unique<gcpp::BoundedTopology>(
-    gcpp::BoundedSlice(args_.skip_packages, args_.max_packages),
-    gcpp::BoundedSlice(args_.skip_clusters, args_.max_clusters),
-    gcpp::BoundedSlice(args_.skip_lps, args_.max_lps)
-  );
-  gcpp::Allocator::Init(*topology_);
-  pools_ = std::make_unique<gcpp::NestedPools>(*topology_, args_.max_threads, args_.pin);
-  env_ = std::make_unique<gcpp::MatMulEnv>(*topology_, *pools_);
 }
 
 }

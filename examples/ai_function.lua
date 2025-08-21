@@ -8,15 +8,10 @@ if args.help then
 end
 
 -- Create a Gemma instance
-local gemma, err = require("cgemma").new({
+local gemma = assert(require("cgemma").new({
   tokenizer = args.tokenizer or "tokenizer.spm",
-  model = args.model or "gemma3-4b",
-  weights = args.weights or "4b-it-sfp.sbs",
-  weight_type = args.weight_type
-})
-if not gemma then
-  error("Opoos! "..err)
-end
+  weights = args.weights or "4b-it-sfp.sbs"
+}))
 
 local function implement(...)
   local args = {...}
@@ -24,40 +19,27 @@ local function implement(...)
   local queries = {}
   for i, v in ipairs(args) do
     if i % 2 == 0 then
-      local func_name = string.match(args[i - 1], "^def%s+([a-zA-Z0-9_]+)")
-      if not func_name then
-        error("Opoos! Bad function declaration.")
-      end
+      local func_name = assert(
+        string.match(args[i - 1], "^def%s+([a-zA-Z0-9_]+)"),
+        "Opoos! Bad function declaration."
+      )
       table.insert(func_names, func_name)
       table.insert(func_names, "")
       table.insert(func_names, "")
-      local session, err = gemma:session({max_generated_tokens = 1})
-      if not session then
-        error("Opoos! "..err)
-      end
-      table.insert(queries, session)
+      table.insert(queries, assert(gemma:session({max_generated_tokens = 1})))
       table.insert(queries, string.format("You are now the following python function:\n```python\n%s\n    '''%s'''\n```\n\nWhen you are called later, please reply with your return value only.", args[i - 1], v))
       table.insert(queries, function(token, pos, prompt_size)
         return pos < prompt_size
       end)
     end
   end
-  local result, err = require("cgemma").batch(unpack(queries))
-  if not result then
-    error("Opoos! "..err)
-  end
+  local result = assert(require("cgemma").batch(unpack(queries)))
   local funcs = {}
   for i = 1, #queries, 3 do
     local func_name = func_names[i]
-    local context, err = queries[i]:dumps()
-    if not context then
-      error("Opoos! "..err)
-    end
+    local context = assert(queries[i]:dumps())
     table.insert(funcs, function(...)
-      local session, err = gemma:session({top_k = 5})
-      if not session then
-        error("Opoos! "..err)
-      end
+      local session = assert(gemma:session({top_k = 5}))
       session:loads(context)
       local args = {...}
       for i, v in ipairs(args) do
@@ -67,11 +49,7 @@ local function implement(...)
           args[i] = "'''"..v.."'''"
         end
       end
-      local reply, err = session(string.format("%s(%s)", func_name, table.concat(args, ", ")))
-      if not reply then
-        error("Opoos! "..err)
-      end
-      return reply
+      return assert(session(string.format("%s(%s)", func_name, table.concat(args, ", "))))
     end)
   end
   return unpack(funcs)
