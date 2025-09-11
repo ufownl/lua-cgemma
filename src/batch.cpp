@@ -157,7 +157,6 @@ int batch(lua_State* L) {
     auto cfg = parse_config(sess_ctxs);
     cfg.verbosity = 0;
     auto inst = sess_ctxs.front().sess->inst();
-    cfg.gen = &inst->rnd();
     cfg.batch_stream_token = [&](size_t query_idx, size_t pos, int token, float) {
       auto& ctx = sess_ctxs[query_idx];
       if (ctx.stream_fn == 0) {

@@ -79,7 +79,6 @@ int create(lua_State* L) {
     );
     tks.AllocateAndAttachRowPtrs(inst->matmul_env().row_ptrs);
     gcpp::RuntimeConfig cfg;
-    cfg.gen = &inst->rnd();
     cfg.verbosity = 0;
     inst->model().GenerateImageTokens(cfg, tks.Rows(), img, tks, inst->matmul_env());
     auto ud = lua_newuserdata(L, sizeof(gcpp::ImageTokens));
