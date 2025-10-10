@@ -13,7 +13,7 @@ if(APPLE AND NOT DEFINED CMAKE_MACOSX_RPATH)
   set(CMAKE_MACOSX_RPATH TRUE)
 endif()
 
-FetchContent_Declare(gemma GIT_REPOSITORY https://github.com/google/gemma.cpp GIT_TAG origin/main)
+FetchContent_Declare(gemma GIT_REPOSITORY https://github.com/google/gemma.cpp GIT_TAG 4a924f179448dc83e46a2af9520c61b4ef56174c)
 FetchContent_GetProperties(gemma)
 if(NOT gemma_POPULATED)
   FetchContent_Populate(gemma)
