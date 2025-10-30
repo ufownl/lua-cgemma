@@ -114,7 +114,6 @@ Available options:
   weights = "/path/to/4b-it-sfp.sbs",  -- Path of model weights file. (required)
   map = -1,  -- Enable memory-mapping? (-1 means auto, 0 means no, 1 means yes)
   to_bf16 = -1,  -- Convert weights to bf16? (-1 means auto, 0 means no, 1 means yes)
-  seed = 42,  -- Random seed. (default is random setting)
   scheduler = sched_inst,  -- Instance of scheduler, if not provided a default
                            -- scheduler will be attached.
   disabled_words = {...},  -- Words you don't want to generate.

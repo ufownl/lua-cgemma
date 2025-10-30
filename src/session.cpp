@@ -15,7 +15,6 @@ void generate(cgemma::session* sess, const gcpp::ImageTokens* image, const std::
   gcpp::RuntimeConfig cfg;
   sess->args().CopyTo(cfg);
   cfg.verbosity = 0;
-  cfg.gen = &sess->inst()->rnd();
   cfg.batch_stream_token = stream_token;
   if (!sess->inst()->disabled_tokens().empty()) {
     cfg.accept_token = [&](int token, float) {
@@ -139,8 +138,6 @@ int reset(lua_State* L) {
 
 enum class kv_cache_field: size_t {
   kv_cache,
-  conv1d_cache,
-  rglru_cache,
   end
 };
 
@@ -158,20 +155,6 @@ public:
       ptrs_[static_cast<size_t>(kv_cache_field::kv_cache)] = nullptr;
       sizes_[static_cast<size_t>(kv_cache_field::kv_cache)] = 0;
     }
-#define GRIFFIN_CACHE(FIELD)                                                                                      \
-  do {                                                                                                            \
-    auto& field = sess->kv_cache().FIELD;                                                                         \
-    if (field.Rows() > 0) {                                                                                       \
-      ptrs_[static_cast<size_t>(kv_cache_field::FIELD)] = field.RowBytes(0);                                      \
-      sizes_[static_cast<size_t>(kv_cache_field::FIELD)] = field.Rows() * field.Stride() * field.ElementBytes();  \
-    } else {                                                                                                      \
-      ptrs_[static_cast<size_t>(kv_cache_field::FIELD)] = nullptr;                                                \
-      sizes_[static_cast<size_t>(kv_cache_field::FIELD)] = 0;                                                     \
-    }                                                                                                             \
-  } while (false)
-    GRIFFIN_CACHE(conv1d_cache);
-    GRIFFIN_CACHE(rglru_cache);
-#undef GRIFFIN_CACHE
   }
 
   template <kv_cache_field Field>
@@ -207,8 +190,6 @@ size_t dump_impl(char* buf, const cgemma::session* sess) {
     }                                                                                             \
   } while (false)
     DUMP_CACHE(kv_cache);
-    DUMP_CACHE(conv1d_cache);
-    DUMP_CACHE(rglru_cache);
 #undef DUMP_CACHE
   }
   return sizeof(name) + sizeof(pos) + blob.total_size();
@@ -243,8 +224,6 @@ void load_impl(cgemma::session* sess, const char* buf, size_t n) {
     }                                                                                             \
   } while (false)
   LOAD_CACHE(kv_cache);
-  LOAD_CACHE(conv1d_cache);
-  LOAD_CACHE(rglru_cache);
 #undef LOAD_CACHE
 }
 

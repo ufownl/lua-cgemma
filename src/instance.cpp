@@ -32,9 +32,8 @@ int disabled_tokens(lua_State* L) {
 
 namespace cgemma {
 
-instance::instance(int argc, char* argv[], unsigned int seed, scheduler* sched)
+instance::instance(int argc, char* argv[], scheduler* sched)
   : args_(argc, argv)
-  , rnd_(seed)
   , sched_(sched) {
   if (!sched_) {
     default_sched_ = std::make_unique<scheduler>();
@@ -116,19 +115,10 @@ int instance::create(lua_State* L) {
   }
   auto ud = lua_newuserdata(L, sizeof(instance));
   try {
-    unsigned int seed;
-    lua_getfield(L, 1, "seed");
-    if (lua_isnumber(L, -1)) {
-      seed = lua_tointeger(L, -1);
-    } else {
-      std::random_device rd;
-      seed = rd();
-    }
-    lua_pop(L, 1);
     lua_getfield(L, 1, "scheduler");
     auto sched = scheduler::to(L, -1);
     lua_pop(L, 1);
-    auto inst = new(ud) instance(argc, argv, seed, sched);
+    auto inst = new(ud) instance(argc, argv, sched);
     luaL_getmetatable(L, name);
     lua_setmetatable(L, -2);
     lua_getfield(L, 1, "disabled_words");
