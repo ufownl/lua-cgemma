@@ -103,7 +103,7 @@ gcpp::TimingInfo generate(cgemma::instance* inst, const std::vector<cgemma::sess
       .mutable_pos = ctx.start_pos,
       .initial_pos = ctx.start_pos,
       .prefix_end = ctx.prefix_end,
-      .kv_cache = ctx.sess->kv_cache()
+      .kv_cache = gcpp::KVCachePtr{.kv_cache = ctx.sess->kv_cache().kv_cache}
     });
   }
   inst->model().GenerateBatch(cfg, queries, inst->matmul_env(), timing);
